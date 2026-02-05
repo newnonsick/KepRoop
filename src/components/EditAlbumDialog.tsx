@@ -107,23 +107,23 @@ export function EditAlbumDialog({ album, trigger, open: controlledOpen, onOpenCh
             <DialogTrigger asChild>
                 {trigger}
             </DialogTrigger>
-            <DialogContent className="sm:max-w-md rounded-2xl border-slate-100 shadow-xl bg-white">
+            <DialogContent className="sm:max-w-md rounded-2xl border-slate-100 dark:border-slate-700 shadow-xl bg-white dark:bg-slate-900">
                 <DialogHeader>
-                    <DialogTitle className="text-xl text-slate-800">Edit Album</DialogTitle>
-                    <DialogDescription className="text-slate-500">
+                    <DialogTitle className="text-xl text-slate-800 dark:text-slate-100">Edit Album</DialogTitle>
+                    <DialogDescription className="text-slate-500 dark:text-slate-400">
                         Update album details
                     </DialogDescription>
                 </DialogHeader>
 
                 <form onSubmit={handleSubmit} className="space-y-5 mt-4">
                     {error && (
-                        <div className="p-3 bg-red-50 border border-red-100 rounded-xl text-sm text-red-600">
+                        <div className="p-3 bg-red-50 dark:bg-red-900/20 border border-red-100 dark:border-red-800 rounded-xl text-sm text-red-600 dark:text-red-400">
                             {error}
                         </div>
                     )}
 
                     <div className="space-y-2">
-                        <Label htmlFor="title" className="text-sm font-medium text-slate-700">
+                        <Label htmlFor="title" className="text-sm font-medium text-slate-700 dark:text-slate-300">
                             Album name
                         </Label>
                         <Input
@@ -131,12 +131,12 @@ export function EditAlbumDialog({ album, trigger, open: controlledOpen, onOpenCh
                             value={title}
                             onChange={(e) => setTitle(e.target.value)}
                             disabled={loading}
-                            className="h-11 bg-slate-50 border-slate-200 focus:bg-white focus:border-blue-500 focus:ring-blue-500/20 rounded-xl"
+                            className="h-11 bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 focus:bg-white dark:focus:bg-slate-800 focus:border-blue-500 focus:ring-blue-500/20 rounded-xl dark:text-slate-100"
                         />
                     </div>
 
                     <div className="space-y-2">
-                        <Label htmlFor="description" className="text-sm font-medium text-slate-700">
+                        <Label htmlFor="description" className="text-sm font-medium text-slate-700 dark:text-slate-300">
                             Description <span className="text-slate-400 font-normal">(optional)</span>
                         </Label>
                         <Input
@@ -144,12 +144,12 @@ export function EditAlbumDialog({ album, trigger, open: controlledOpen, onOpenCh
                             value={description}
                             onChange={(e) => setDescription(e.target.value)}
                             disabled={loading}
-                            className="h-11 bg-slate-50 border-slate-200 focus:bg-white focus:border-blue-500 focus:ring-blue-500/20 rounded-xl"
+                            className="h-11 bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 focus:bg-white dark:focus:bg-slate-800 focus:border-blue-500 focus:ring-blue-500/20 rounded-xl dark:text-slate-100"
                         />
                     </div>
 
                     <div className="space-y-2">
-                        <Label htmlFor="date" className="text-sm font-medium text-slate-700">
+                        <Label htmlFor="date" className="text-sm font-medium text-slate-700 dark:text-slate-300">
                             Album date
                         </Label>
                         <Input
@@ -158,20 +158,20 @@ export function EditAlbumDialog({ album, trigger, open: controlledOpen, onOpenCh
                             value={date}
                             onChange={(e) => setDate(e.target.value)}
                             disabled={loading}
-                            className="h-11 bg-slate-50 border-slate-200 focus:bg-white focus:border-blue-500 focus:ring-blue-500/20 rounded-xl"
+                            className="h-11 bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 focus:bg-white dark:focus:bg-slate-800 focus:border-blue-500 focus:ring-blue-500/20 rounded-xl dark:text-slate-100"
                         />
                     </div>
 
                     <div className="space-y-2">
-                        <Label className="text-sm font-medium text-slate-700">Visibility</Label>
+                        <Label className="text-sm font-medium text-slate-700 dark:text-slate-300">Visibility</Label>
                         <div className="grid grid-cols-2 gap-3">
                             <button
                                 type="button"
                                 onClick={() => setVisibility("private")}
                                 disabled={loading}
                                 className={`flex items-center gap-3 p-3 rounded-xl border-2 text-left transition-all ${visibility === "private"
-                                    ? "border-blue-500 bg-blue-50"
-                                    : "border-slate-200 hover:border-slate-300 bg-white"
+                                    ? "border-blue-500 bg-blue-50 dark:bg-blue-900/30"
+                                    : "border-slate-200 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-600 bg-white dark:bg-slate-800"
                                     }`}
                             >
                                 <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${visibility === "private" ? "bg-blue-500 text-white" : "bg-slate-100 text-slate-500"
@@ -179,8 +179,8 @@ export function EditAlbumDialog({ album, trigger, open: controlledOpen, onOpenCh
                                     <Lock className="h-4 w-4" />
                                 </div>
                                 <div>
-                                    <p className="text-sm font-medium text-slate-800">Private</p>
-                                    <p className="text-xs text-slate-500">Invite only</p>
+                                    <p className="text-sm font-medium text-slate-800 dark:text-slate-100">Private</p>
+                                    <p className="text-xs text-slate-500 dark:text-slate-400">Invite only</p>
                                 </div>
                             </button>
                             <button
@@ -188,8 +188,8 @@ export function EditAlbumDialog({ album, trigger, open: controlledOpen, onOpenCh
                                 onClick={() => setVisibility("public")}
                                 disabled={loading}
                                 className={`flex items-center gap-3 p-3 rounded-xl border-2 text-left transition-all ${visibility === "public"
-                                    ? "border-blue-500 bg-blue-50"
-                                    : "border-slate-200 hover:border-slate-300 bg-white"
+                                    ? "border-blue-500 bg-blue-50 dark:bg-blue-900/30"
+                                    : "border-slate-200 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-600 bg-white dark:bg-slate-800"
                                     }`}
                             >
                                 <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${visibility === "public" ? "bg-blue-500 text-white" : "bg-slate-100 text-slate-500"
@@ -197,8 +197,8 @@ export function EditAlbumDialog({ album, trigger, open: controlledOpen, onOpenCh
                                     <Globe className="h-4 w-4" />
                                 </div>
                                 <div>
-                                    <p className="text-sm font-medium text-slate-800">Public</p>
-                                    <p className="text-xs text-slate-500">Anyone with link</p>
+                                    <p className="text-sm font-medium text-slate-800 dark:text-slate-100">Public</p>
+                                    <p className="text-xs text-slate-500 dark:text-slate-400">Anyone with link</p>
                                 </div>
                             </button>
                         </div>
@@ -210,7 +210,7 @@ export function EditAlbumDialog({ album, trigger, open: controlledOpen, onOpenCh
                             variant="outline"
                             onClick={() => setOpen(false)}
                             disabled={loading}
-                            className="flex-1 border-slate-200 text-slate-600 hover:bg-slate-50 rounded-xl"
+                            className="flex-1 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-xl"
                         >
                             Cancel
                         </Button>

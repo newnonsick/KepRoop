@@ -107,12 +107,9 @@ export default function DashboardPage() {
         }
     }, [data]);
 
-    // Reset pagination when filters change
-    useEffect(() => {
-        setAlbums([]);
-        setCursor(null);
-        setHasMore(false);
-    }, [filter, visibilityFilter, startDate, endDate, searchQuery, sortBy, sortDir]);
+    // Note: We don't reset albums on filter change anymore
+    // SWR automatically handles refetching when initialUrl changes
+    // The loading state from SWR will show the skeleton
 
     const loadMore = async () => {
         if (!cursor || isLoadingMore) return;
@@ -169,7 +166,7 @@ export default function DashboardPage() {
     };
 
     return (
-        <div className="min-h-screen bg-slate-50/50">
+        <div className="min-h-screen bg-slate-50/50 dark:bg-slate-950">
             <DashboardNavbar />
 
             <div className="flex">
@@ -193,7 +190,7 @@ export default function DashboardPage() {
                                             <Menu className="h-5 w-5 text-slate-600" />
                                         </Button>
                                     </SheetTrigger>
-                                    <SheetContent side="left" className="p-0 w-72">
+                                    <SheetContent side="left" className="p-0 w-72 dark:bg-slate-900 dark:border-slate-800">
                                         <DashboardSidebar
                                             currentFilter={filter}
                                             onFilterChange={(f) => {
@@ -210,8 +207,8 @@ export default function DashboardPage() {
                                 </Sheet>
 
                                 <div>
-                                    <h1 className="text-2xl font-semibold text-slate-800">{getPageTitle()}</h1>
-                                    <p className="text-sm text-slate-500 mt-1">
+                                    <h1 className="text-2xl font-semibold text-slate-800 dark:text-slate-100">{getPageTitle()}</h1>
+                                    <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
                                         {(loading || (!loading && data?.albums?.length && albums.length === 0)) ? "Loading albums..." : (
                                             filteredAlbums.length === 0
                                                 ? (searchQuery ? "No matches found" : "No albums found")
@@ -230,7 +227,7 @@ export default function DashboardPage() {
                                             placeholder="Search albums..."
                                             value={searchQuery}
                                             onChange={(e) => setSearchQuery(e.target.value)}
-                                            className="pl-11 pr-10 h-11 bg-white border-slate-200 rounded-2xl shadow-sm focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 transition-all text-sm font-medium placeholder:text-slate-400"
+                                            className="pl-11 pr-10 h-11 bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 rounded-2xl shadow-sm focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 transition-all text-sm font-medium placeholder:text-slate-400 dark:placeholder:text-slate-500 dark:text-slate-100"
                                         />
                                         {searchQuery && (
                                             <button
@@ -247,7 +244,7 @@ export default function DashboardPage() {
                                         <DropdownMenuTrigger asChild>
                                             <Button
                                                 variant="outline"
-                                                className="h-11 px-3 gap-1.5 rounded-2xl transition-all border-slate-200 text-slate-600 bg-white hover:bg-slate-50"
+                                                className="h-11 px-3 gap-1.5 rounded-2xl transition-all border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700"
                                             >
                                                 {sortDir === "desc" ? <ArrowDown className="h-4 w-4" /> : <ArrowUp className="h-4 w-4" />}
                                                 <span className="text-sm">
@@ -255,31 +252,31 @@ export default function DashboardPage() {
                                                 </span>
                                             </Button>
                                         </DropdownMenuTrigger>
-                                        <DropdownMenuContent align="end" className="w-48 bg-white rounded-2xl shadow-xl border-slate-100 p-1">
+                                        <DropdownMenuContent align="end" className="w-48 bg-white dark:bg-slate-800 rounded-2xl shadow-xl border-slate-100 dark:border-slate-700 p-1">
                                             <DropdownMenuItem
                                                 onClick={() => { setSortBy("albumDate"); setSortDir("desc"); }}
-                                                className="rounded-xl px-3 py-2 cursor-pointer focus:bg-slate-50"
+                                                className="rounded-xl px-3 py-2 cursor-pointer focus:bg-slate-50 dark:focus:bg-slate-700 dark:text-slate-200"
                                             >
                                                 <ArrowDown className="mr-2 h-4 w-4 text-slate-400" />
                                                 Album Date (Newest)
                                             </DropdownMenuItem>
                                             <DropdownMenuItem
                                                 onClick={() => { setSortBy("albumDate"); setSortDir("asc"); }}
-                                                className="rounded-xl px-3 py-2 cursor-pointer focus:bg-slate-50"
+                                                className="rounded-xl px-3 py-2 cursor-pointer focus:bg-slate-50 dark:focus:bg-slate-700 dark:text-slate-200"
                                             >
                                                 <ArrowUp className="mr-2 h-4 w-4 text-slate-400" />
                                                 Album Date (Oldest)
                                             </DropdownMenuItem>
                                             <DropdownMenuItem
                                                 onClick={() => { setSortBy("createdAt"); setSortDir("desc"); }}
-                                                className="rounded-xl px-3 py-2 cursor-pointer focus:bg-slate-50"
+                                                className="rounded-xl px-3 py-2 cursor-pointer focus:bg-slate-50 dark:focus:bg-slate-700 dark:text-slate-200"
                                             >
                                                 <ArrowDown className="mr-2 h-4 w-4 text-slate-400" />
                                                 Created (Newest)
                                             </DropdownMenuItem>
                                             <DropdownMenuItem
                                                 onClick={() => { setSortBy("createdAt"); setSortDir("asc"); }}
-                                                className="rounded-xl px-3 py-2 cursor-pointer focus:bg-slate-50"
+                                                className="rounded-xl px-3 py-2 cursor-pointer focus:bg-slate-50 dark:focus:bg-slate-700 dark:text-slate-200"
                                             >
                                                 <ArrowUp className="mr-2 h-4 w-4 text-slate-400" />
                                                 Created (Oldest)
@@ -292,8 +289,8 @@ export default function DashboardPage() {
                                         variant="outline"
                                         onClick={() => setShowFilters(!showFilters)}
                                         className={cn(
-                                            "h-11 px-3 gap-1.5 rounded-2xl transition-all border-slate-200 text-slate-600 bg-white hover:bg-slate-50",
-                                            (startDate || endDate || visibilityFilter !== "all" || showFilters) && "bg-blue-50 border-blue-200 text-blue-600 shadow-sm"
+                                            "h-11 px-3 gap-1.5 rounded-2xl transition-all border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700",
+                                            (startDate || endDate || visibilityFilter !== "all" || showFilters) && "bg-blue-50 dark:bg-blue-900/30 border-blue-200 dark:border-blue-700 text-blue-600 dark:text-blue-400 shadow-sm"
                                         )}
                                     >
                                         <Filter className="h-4 w-4" />
@@ -313,11 +310,11 @@ export default function DashboardPage() {
                             "hidden lg:block overflow-hidden transition-all duration-300 ease-in-out",
                             showFilters ? "max-h-32 mb-6" : "max-h-0"
                         )}>
-                            <div className="bg-white border border-slate-200 rounded-3xl p-4 shadow-sm">
+                            <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-3xl p-4 shadow-sm">
                                 <div className="flex items-center justify-between gap-6">
                                     {/* Visibility Filter */}
                                     <div className="flex items-center gap-3">
-                                        <Label className="text-xs font-bold text-slate-400 uppercase tracking-widest">Visibility:</Label>
+                                        <Label className="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest">Visibility:</Label>
                                         <div className="flex items-center gap-1.5">
                                             {(["all", "public", "private"] as const).map((vis) => (
                                                 <button
@@ -326,8 +323,8 @@ export default function DashboardPage() {
                                                     className={cn(
                                                         "flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition-all border",
                                                         visibilityFilter === vis
-                                                            ? "bg-blue-50 border-blue-200 text-blue-600"
-                                                            : "bg-slate-50 border-slate-200 text-slate-500 hover:bg-slate-100"
+                                                            ? "bg-blue-50 dark:bg-blue-900/30 border-blue-200 dark:border-blue-700 text-blue-600 dark:text-blue-400"
+                                                            : "bg-slate-50 dark:bg-slate-700 border-slate-200 dark:border-slate-600 text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-600"
                                                     )}
                                                 >
                                                     {vis === "all" && <LayoutGrid className="h-3.5 w-3.5" />}
@@ -342,20 +339,20 @@ export default function DashboardPage() {
                                     {/* Date Range Filter */}
                                     <div className="flex items-center gap-3">
                                         <Label className="text-xs font-bold text-slate-400 uppercase tracking-widest">Date Range:</Label>
-                                        <div className="flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-2xl px-3 h-10 focus-within:bg-white focus-within:border-blue-500 transition-all">
+                                        <div className="flex items-center gap-2 bg-slate-50 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-2xl px-3 h-10 focus-within:bg-white dark:focus-within:bg-slate-800 focus-within:border-blue-500 transition-all">
                                             <Calendar className="h-4 w-4 text-slate-400" />
                                             <input
                                                 type="date"
                                                 value={startDate}
                                                 onChange={(e) => setStartDate(e.target.value)}
-                                                className="bg-transparent border-none text-sm text-slate-600 focus:ring-0 p-0 w-28 font-medium"
+                                                className="bg-transparent border-none text-sm text-slate-600 dark:text-slate-300 focus:ring-0 p-0 w-28 font-medium"
                                             />
                                             <span className="text-slate-300 font-light">to</span>
                                             <input
                                                 type="date"
                                                 value={endDate}
                                                 onChange={(e) => setEndDate(e.target.value)}
-                                                className="bg-transparent border-none text-sm text-slate-600 focus:ring-0 p-0 w-28 font-medium"
+                                                className="bg-transparent border-none text-sm text-slate-600 dark:text-slate-300 focus:ring-0 p-0 w-28 font-medium"
                                             />
                                             {(startDate || endDate) && (
                                                 <button
@@ -400,7 +397,7 @@ export default function DashboardPage() {
                         {/* Active Filter Chips (Desktop) */}
                         <div className="hidden lg:flex flex-wrap items-center gap-2 mb-8">
                             {searchQuery && (
-                                <div className="flex items-center gap-1.5 pl-3 pr-1 py-1 bg-white border border-blue-100 rounded-full text-xs font-semibold text-blue-600 shadow-sm animate-in fade-in zoom-in duration-300">
+                                <div className="flex items-center gap-1.5 pl-3 pr-1 py-1 bg-white dark:bg-slate-800 border border-blue-100 dark:border-blue-800 rounded-full text-xs font-semibold text-blue-600 dark:text-blue-400 shadow-sm animate-in fade-in zoom-in duration-300">
                                     <span>Search: &quot;{searchQuery}&quot;</span>
                                     <button onClick={() => setSearchQuery("")} className="p-1 hover:bg-blue-50 rounded-full transition-colors">
                                         <X className="h-3 w-3" />
@@ -408,7 +405,7 @@ export default function DashboardPage() {
                                 </div>
                             )}
                             {visibilityFilter !== "all" && (
-                                <div className="flex items-center gap-1.5 pl-3 pr-1 py-1 bg-white border border-blue-100 rounded-full text-xs font-semibold text-blue-600 shadow-sm animate-in fade-in zoom-in duration-300">
+                                <div className="flex items-center gap-1.5 pl-3 pr-1 py-1 bg-white dark:bg-slate-800 border border-blue-100 dark:border-blue-800 rounded-full text-xs font-semibold text-blue-600 dark:text-blue-400 shadow-sm animate-in fade-in zoom-in duration-300">
                                     <span className="capitalize">Visibility: {visibilityFilter}</span>
                                     <button onClick={() => setVisibilityFilter("all")} className="p-1 hover:bg-blue-50 rounded-full transition-colors">
                                         <X className="h-3 w-3" />
@@ -416,7 +413,7 @@ export default function DashboardPage() {
                                 </div>
                             )}
                             {(startDate || endDate) && (
-                                <div className="flex items-center gap-1.5 pl-3 pr-1 py-1 bg-white border border-blue-100 rounded-full text-xs font-semibold text-blue-600 shadow-sm animate-in fade-in zoom-in duration-300">
+                                <div className="flex items-center gap-1.5 pl-3 pr-1 py-1 bg-white dark:bg-slate-800 border border-blue-100 dark:border-blue-800 rounded-full text-xs font-semibold text-blue-600 dark:text-blue-400 shadow-sm animate-in fade-in zoom-in duration-300">
                                     <span>Date: {startDate || '...'} to {endDate || '...'}</span>
                                     <button onClick={() => { setStartDate(""); setEndDate(""); }} className="p-1 hover:bg-blue-50 rounded-full transition-colors">
                                         <X className="h-3 w-3" />
@@ -452,12 +449,12 @@ export default function DashboardPage() {
                                         <Button
                                             variant="outline"
                                             size="icon"
-                                            className="h-12 w-12 rounded-2xl transition-all border-slate-200 bg-white shrink-0"
+                                            className="h-12 w-12 rounded-2xl transition-all border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 shrink-0 dark:text-slate-300"
                                         >
                                             {sortDir === "desc" ? <ArrowDown className="h-4 w-4" /> : <ArrowUp className="h-4 w-4" />}
                                         </Button>
                                     </DropdownMenuTrigger>
-                                    <DropdownMenuContent align="end" className="w-48 bg-white rounded-2xl shadow-xl border-slate-100 p-1">
+                                    <DropdownMenuContent align="end" className="w-48 bg-white dark:bg-slate-800 rounded-2xl shadow-xl border-slate-100 dark:border-slate-700 p-1">
                                         <DropdownMenuItem
                                             onClick={() => { setSortBy("albumDate"); setSortDir("desc"); }}
                                             className="rounded-xl px-3 py-2 cursor-pointer focus:bg-slate-50"
@@ -494,8 +491,8 @@ export default function DashboardPage() {
                                     size="icon"
                                     onClick={() => setShowFilters(!showFilters)}
                                     className={cn(
-                                        "h-12 w-12 rounded-2xl transition-all border-slate-200 bg-white shrink-0",
-                                        (startDate || endDate || visibilityFilter !== "all" || showFilters) && "bg-blue-50 border-blue-200 text-blue-600 shadow-sm"
+                                        "h-12 w-12 rounded-2xl transition-all border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 shrink-0",
+                                        (startDate || endDate || visibilityFilter !== "all" || showFilters) && "bg-blue-50 dark:bg-blue-900/30 border-blue-200 dark:border-blue-700 text-blue-600 dark:text-blue-400 shadow-sm"
                                     )}
                                 >
                                     <Filter className="h-4 w-4" />
@@ -503,13 +500,13 @@ export default function DashboardPage() {
                             </div>
 
                             <div className={cn(
-                                "overflow-hidden transition-all duration-300 ease-in-out bg-white border border-slate-100 rounded-3xl shadow-sm",
+                                "overflow-hidden transition-all duration-300 ease-in-out bg-white dark:bg-slate-800 border border-slate-100 dark:border-slate-700 rounded-3xl shadow-sm",
                                 showFilters ? "max-h-[300px] p-4 opacity-100" : "max-h-0 opacity-0 p-0"
                             )}>
                                 <div className="space-y-4">
                                     <div className="space-y-2">
                                         <Label className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.15em] ml-1">Visibility</Label>
-                                        <div className="flex p-1 bg-slate-50 rounded-xl border border-slate-200">
+                                        <div className="flex p-1 bg-slate-50 dark:bg-slate-700 rounded-xl border border-slate-200 dark:border-slate-600">
                                             {["all", "public", "private"].map((v) => (
                                                 <button
                                                     key={v}
@@ -517,8 +514,8 @@ export default function DashboardPage() {
                                                     className={cn(
                                                         "flex-1 py-2 text-xs font-semibold rounded-lg transition-all capitalize",
                                                         visibilityFilter === v
-                                                            ? "bg-white text-blue-600 shadow-sm border border-blue-100"
-                                                            : "text-slate-500 hover:text-slate-800"
+                                                            ? "bg-white dark:bg-slate-600 text-blue-600 dark:text-blue-400 shadow-sm border border-blue-100 dark:border-blue-800"
+                                                            : "text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200"
                                                     )}
                                                 >
                                                     {v}
@@ -529,7 +526,7 @@ export default function DashboardPage() {
 
                                     <div className="space-y-2">
                                         <Label className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.15em] ml-1">Date Range</Label>
-                                        <div className="flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-xl px-3 h-11 focus-within:bg-white focus-within:border-blue-500 transition-all">
+                                        <div className="flex items-center gap-2 bg-slate-50 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-xl px-3 h-11 focus-within:bg-white dark:focus-within:bg-slate-800 focus-within:border-blue-500 transition-all">
                                             <Calendar className="h-4 w-4 text-slate-400" />
                                             <input
                                                 type="date"
@@ -587,7 +584,7 @@ export default function DashboardPage() {
                             (loading || (!loading && data?.albums?.length && albums.length === 0)) ? (
                                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
                                     {[...Array(6)].map((_, i) => (
-                                        <div key={i} className="bg-white rounded-3xl overflow-hidden shadow-sm border border-slate-100">
+                                        <div key={i} className="bg-white dark:bg-slate-800 rounded-3xl overflow-hidden shadow-sm border border-slate-100 dark:border-slate-700">
                                             <Skeleton className="aspect-[4/3] rounded-none" />
                                             <div className="p-5 space-y-3">
                                                 <Skeleton className="h-5 w-2/3 rounded-lg" />
@@ -597,14 +594,14 @@ export default function DashboardPage() {
                                     ))}
                                 </div>
                             ) : filteredAlbums.length === 0 ? (
-                                <div className="flex flex-col items-center justify-center py-20 bg-white rounded-[2rem] border border-slate-100 shadow-sm border-dashed">
+                                <div className="flex flex-col items-center justify-center py-20 bg-white dark:bg-slate-800 rounded-[2rem] border border-slate-100 dark:border-slate-700 shadow-sm border-dashed">
                                     <div className="w-20 h-20 bg-blue-50 rounded-2xl flex items-center justify-center mb-6">
                                         <ImageIcon className="h-10 w-10 text-blue-400" strokeWidth={1.5} />
                                     </div>
-                                    <h3 className="text-xl font-semibold text-slate-800 mb-2">
+                                    <h3 className="text-xl font-semibold text-slate-800 dark:text-slate-100 mb-2">
                                         {searchQuery ? "No matches found" : "No albums here"}
                                     </h3>
-                                    <p className="text-slate-500 mb-8 text-center max-w-xs">
+                                    <p className="text-slate-500 dark:text-slate-400 mb-8 text-center max-w-xs">
                                         {searchQuery
                                             ? `We couldn't find any albums matching "${searchQuery}"`
                                             : (filter === "all"
@@ -641,7 +638,7 @@ export default function DashboardPage() {
                                             <Link
                                                 href={`/albums/${album.id}`}
                                                 key={album.id}
-                                                className="group bg-white rounded-3xl overflow-hidden border border-slate-100 hover:border-blue-200 hover:shadow-xl hover:shadow-blue-500/5 transition-all duration-300 flex flex-col"
+                                                className="group bg-white dark:bg-slate-800 rounded-3xl overflow-hidden border border-slate-100 dark:border-slate-700 hover:border-blue-200 dark:hover:border-blue-700 hover:shadow-xl hover:shadow-blue-500/5 transition-all duration-300 flex flex-col"
                                             >
                                                 {/* Cover */}
                                                 <div className="relative">
@@ -671,19 +668,19 @@ export default function DashboardPage() {
                                                         <Calendar className="h-3.5 w-3.5" />
                                                         {formatLocalDate(album.albumDate)}
                                                     </div>
-                                                    <h3 className="font-semibold text-lg text-slate-800 mt-2 truncate group-hover:text-blue-600 transition-colors">
+                                                    <h3 className="font-semibold text-lg text-slate-800 dark:text-slate-100 mt-2 truncate group-hover:text-blue-600 transition-colors">
                                                         {album.title}
                                                     </h3>
-                                                    <p className="text-sm text-slate-500 mt-1.5 line-clamp-1">
+                                                    <p className="text-sm text-slate-500 dark:text-slate-400 mt-1.5 line-clamp-1">
                                                         {album.description || "No description provided"}
                                                     </p>
 
-                                                    <div className="flex items-center justify-between mt-5 pt-5 border-t border-slate-50">
+                                                    <div className="flex items-center justify-between mt-5 pt-5 border-t border-slate-50 dark:border-slate-700">
                                                         <span className={cn(
                                                             "text-[10px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-lg",
                                                             album.taskRole === "owner"
-                                                                ? "bg-blue-50 text-blue-600"
-                                                                : "bg-slate-100 text-slate-500"
+                                                                ? "bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400"
+                                                                : "bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-400"
                                                         )}>
                                                             {album.taskRole}
                                                         </span>
@@ -701,12 +698,12 @@ export default function DashboardPage() {
                                         {filter !== "shared" && (
                                             <CreateAlbumDialog
                                                 trigger={
-                                                    <button className="aspect-auto min-h-[320px] bg-white rounded-[2rem] border-2 border-dashed border-slate-200 hover:border-blue-300 hover:bg-blue-50/20 transition-all flex flex-col items-center justify-center gap-4 cursor-pointer group">
+                                                    <button className="aspect-auto min-h-[320px] bg-white dark:bg-slate-800 rounded-[2rem] border-2 border-dashed border-slate-200 dark:border-slate-700 hover:border-blue-300 dark:hover:border-blue-600 hover:bg-blue-50/20 dark:hover:bg-blue-900/10 transition-all flex flex-col items-center justify-center gap-4 cursor-pointer group">
                                                         <div className="w-16 h-16 bg-slate-50 group-hover:bg-blue-100/50 rounded-2xl flex items-center justify-center transition-all group-hover:scale-110">
                                                             <Plus className="h-8 w-8 text-slate-400 group-hover:text-blue-500" strokeWidth={2.5} />
                                                         </div>
                                                         <div className="text-center">
-                                                            <span className="text-sm font-semibold text-slate-600 group-hover:text-blue-600 block">Create Album</span>
+                                                            <span className="text-sm font-semibold text-slate-600 dark:text-slate-300 group-hover:text-blue-600 dark:group-hover:text-blue-400 block">Create Album</span>
                                                             <span className="text-xs text-slate-400 mt-1">Start a new collection</span>
                                                         </div>
                                                     </button>

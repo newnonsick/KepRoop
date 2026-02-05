@@ -2,29 +2,36 @@
 
 import { useState } from "react";
 import { useAuth } from "@/components/providers/AuthProvider";
+import { useTheme } from "@/components/providers/ThemeProvider";
 import { Button } from "@/components/ui/button";
 import {
     Dialog,
     DialogContent,
-    DialogDescription,
-    DialogHeader,
-    DialogTitle,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { ThemeToggle } from "@/components/ThemeToggle";
 import { toast } from "sonner";
-import { Loader2, User, Lock, KeyRound } from "lucide-react";
-import { useRouter } from "next/navigation";
+import { Loader2, Settings, User, Lock, KeyRound, X } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 interface SettingsDialogProps {
     open: boolean;
     onOpenChange: (open: boolean) => void;
 }
 
+type SettingsSection = "general" | "account" | "security";
+
+const navItems = [
+    { id: "general" as const, label: "General", icon: Settings },
+    { id: "account" as const, label: "Account", icon: User },
+    { id: "security" as const, label: "Security", icon: Lock },
+];
+
 export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
     const { user, mutate } = useAuth();
-    const router = useRouter();
+    const { theme } = useTheme();
+    const [activeSection, setActiveSection] = useState<SettingsSection>("general");
     const [loading, setLoading] = useState(false);
 
     // Profile State
@@ -48,7 +55,7 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
             const data = await res.json();
             if (res.ok) {
                 toast.success("Profile updated successfully");
-                await mutate(); // Refresh user data
+                await mutate();
             } else {
                 toast.error(data.error || "Failed to update profile");
             }
@@ -84,7 +91,7 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
                 setCurrentPassword("");
                 setNewPassword("");
                 setConfirmPassword("");
-                await mutate(); // Refresh user data to update hasPassword status
+                await mutate();
             } else {
                 toast.error(data.error || "Failed to update password");
             }
@@ -97,117 +104,150 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent className="sm:max-w-[425px] rounded-3xl p-0 overflow-hidden bg-white shadow-2xl border-slate-100">
-                <div className="p-6 pb-0">
-                    <DialogHeader>
-                        <DialogTitle className="text-xl text-slate-800">Account Settings</DialogTitle>
-                        <DialogDescription className="text-slate-500">
-                            Manage your profile and security preferences.
-                        </DialogDescription>
-                    </DialogHeader>
-                </div>
+            <DialogContent className="sm:max-w-[600px] p-0 overflow-hidden bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 rounded-2xl">
+                <div className="flex min-h-[400px]">
+                    {/* Sidebar Navigation */}
+                    <div className="w-48 border-r border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 p-2">
+                        {/* Close Button */}
+                        <button
+                            onClick={() => onOpenChange(false)}
+                            className="p-2 mb-4 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-800 transition-colors text-slate-500 dark:text-slate-400"
+                        >
+                            <X className="w-5 h-5" />
+                        </button>
 
-                <Tabs defaultValue="profile" className="w-full">
-                    <div className="px-6 mt-4">
-                        <TabsList className="grid w-full grid-cols-2 bg-slate-100/50 p-1 rounded-2xl">
-                            <TabsTrigger
-                                value="profile"
-                                className="rounded-xl data-[state=active]:bg-white data-[state=active]:text-blue-600 data-[state=active]:shadow-sm transition-all"
-                            >
-                                <User className="w-4 h-4 mr-2" />
-                                Profile
-                            </TabsTrigger>
-                            <TabsTrigger
-                                value="security"
-                                className="rounded-xl data-[state=active]:bg-white data-[state=active]:text-blue-600 data-[state=active]:shadow-sm transition-all"
-                            >
-                                <Lock className="w-4 h-4 mr-2" />
-                                Security
-                            </TabsTrigger>
-                        </TabsList>
+                        {/* Nav Items */}
+                        <nav className="space-y-1">
+                            {navItems.map((item) => (
+                                <button
+                                    key={item.id}
+                                    onClick={() => setActiveSection(item.id)}
+                                    className={cn(
+                                        "w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all cursor-pointer",
+                                        activeSection === item.id
+                                            ? "bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 shadow-sm"
+                                            : "text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-slate-200"
+                                    )}
+                                >
+                                    <item.icon className="w-4 h-4" />
+                                    {item.label}
+                                </button>
+                            ))}
+                        </nav>
                     </div>
 
-                    <div className="p-6">
-                        <TabsContent value="profile" className="mt-0 space-y-4 focus-visible:outline-none">
-                            <form onSubmit={handleUpdateProfile} className="space-y-4">
-                                <div className="space-y-2">
-                                    <Label htmlFor="name" className="text-sm font-medium text-slate-700">Display Name</Label>
-                                    <Input
-                                        id="name"
-                                        value={name}
-                                        onChange={(e) => setName(e.target.value)}
-                                        className="h-11 rounded-xl border-slate-200 bg-slate-50 focus:bg-white transition-all"
-                                        placeholder="Your name"
-                                    />
-                                    <p className="text-[11px] text-slate-400 px-1">
-                                        This is how your name will appear to other users.
-                                    </p>
+                    {/* Content Area */}
+                    <div className="flex-1 p-6">
+                        {/* General Section */}
+                        {activeSection === "general" && (
+                            <div className="space-y-6">
+                                <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100">General</h2>
+
+                                {/* Appearance */}
+                                <div className="flex items-center justify-between py-3 border-b border-slate-100 dark:border-slate-800">
+                                    <div>
+                                        <span className="text-sm font-medium text-slate-700 dark:text-slate-300">Appearance</span>
+                                        <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                                            {theme === "dark" ? "Dark" : "Light"} mode
+                                        </p>
+                                    </div>
+                                    <ThemeToggle />
                                 </div>
-                                <div className="pt-2">
+                            </div>
+                        )}
+
+                        {/* Account Section */}
+                        {activeSection === "account" && (
+                            <div className="space-y-6">
+                                <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100">Account</h2>
+
+                                <form onSubmit={handleUpdateProfile} className="space-y-4">
+                                    <div className="space-y-2">
+                                        <Label htmlFor="name" className="text-sm font-medium text-slate-700 dark:text-slate-300">
+                                            Display Name
+                                        </Label>
+                                        <Input
+                                            id="name"
+                                            value={name}
+                                            onChange={(e) => setName(e.target.value)}
+                                            className="h-11 rounded-xl border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 focus:bg-white dark:focus:bg-slate-700 transition-all text-slate-900 dark:text-slate-100"
+                                            placeholder="Your name"
+                                        />
+                                        <p className="text-[11px] text-slate-400 dark:text-slate-500 px-1">
+                                            This is how your name will appear to other users.
+                                        </p>
+                                    </div>
                                     <Button
                                         type="submit"
                                         disabled={loading || name === user?.name}
-                                        className="w-full rounded-xl h-11 bg-blue-500 hover:bg-blue-600 shadow-lg shadow-blue-500/20 font-medium"
+                                        className="w-full rounded-xl h-11 bg-blue-500 hover:bg-blue-600 shadow-lg shadow-blue-500/20 font-medium disabled:shadow-none"
                                     >
                                         {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                                         Save Changes
                                     </Button>
-                                </div>
-                            </form>
-                        </TabsContent>
+                                </form>
+                            </div>
+                        )}
 
-                        <TabsContent value="security" className="mt-0 space-y-4 focus-visible:outline-none">
-                            <form onSubmit={handleUpdatePassword} className="space-y-4">
-                                {!user?.hasPassword ? (
-                                    <div className="bg-amber-50 border border-amber-100 rounded-xl p-4 mb-4">
-                                        <div className="flex items-start gap-3">
-                                            <KeyRound className="h-5 w-5 text-amber-500 mt-0.5" />
-                                            <div>
-                                                <h4 className="text-sm font-semibold text-amber-700">Set a Password</h4>
-                                                <p className="text-xs text-amber-600 mt-1">
-                                                    You signed in via Google. Set a password to log in with your email address as well.
-                                                </p>
+                        {/* Security Section */}
+                        {activeSection === "security" && (
+                            <div className="space-y-6">
+                                <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100">Security</h2>
+
+                                <form onSubmit={handleUpdatePassword} className="space-y-4">
+                                    {!user?.hasPassword ? (
+                                        <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-100 dark:border-amber-800 rounded-xl p-4">
+                                            <div className="flex items-start gap-3">
+                                                <KeyRound className="h-5 w-5 text-amber-500 mt-0.5" />
+                                                <div>
+                                                    <h4 className="text-sm font-semibold text-amber-700 dark:text-amber-400">Set a Password</h4>
+                                                    <p className="text-xs text-amber-600 dark:text-amber-500 mt-1">
+                                                        You signed in via Google. Set a password to log in with your email address as well.
+                                                    </p>
+                                                </div>
                                             </div>
                                         </div>
-                                    </div>
-                                ) : (
+                                    ) : (
+                                        <div className="space-y-2">
+                                            <Label htmlFor="current" className="text-sm font-medium text-slate-700 dark:text-slate-300">
+                                                Current Password
+                                            </Label>
+                                            <Input
+                                                id="current"
+                                                type="password"
+                                                value={currentPassword}
+                                                onChange={(e) => setCurrentPassword(e.target.value)}
+                                                className="h-11 rounded-xl border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 focus:bg-white dark:focus:bg-slate-700 transition-all text-slate-900 dark:text-slate-100"
+                                            />
+                                        </div>
+                                    )}
+
                                     <div className="space-y-2">
-                                        <Label htmlFor="current" className="text-sm font-medium text-slate-700">Current Password</Label>
+                                        <Label htmlFor="new" className="text-sm font-medium text-slate-700 dark:text-slate-300">
+                                            {user?.hasPassword ? "New Password" : "Create Password"}
+                                        </Label>
                                         <Input
-                                            id="current"
+                                            id="new"
                                             type="password"
-                                            value={currentPassword}
-                                            onChange={(e) => setCurrentPassword(e.target.value)}
-                                            className="h-11 rounded-xl border-slate-200 bg-slate-50 focus:bg-white transition-all"
+                                            value={newPassword}
+                                            onChange={(e) => setNewPassword(e.target.value)}
+                                            className="h-11 rounded-xl border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 focus:bg-white dark:focus:bg-slate-700 transition-all text-slate-900 dark:text-slate-100"
                                         />
                                     </div>
-                                )}
 
-                                <div className="space-y-2">
-                                    <Label htmlFor="new" className="text-sm font-medium text-slate-700">
-                                        {user?.hasPassword ? "New Password" : "Create Password"}
-                                    </Label>
-                                    <Input
-                                        id="new"
-                                        type="password"
-                                        value={newPassword}
-                                        onChange={(e) => setNewPassword(e.target.value)}
-                                        className="h-11 rounded-xl border-slate-200 bg-slate-50 focus:bg-white transition-all"
-                                    />
-                                </div>
+                                    <div className="space-y-2">
+                                        <Label htmlFor="confirm" className="text-sm font-medium text-slate-700 dark:text-slate-300">
+                                            Confirm Password
+                                        </Label>
+                                        <Input
+                                            id="confirm"
+                                            type="password"
+                                            value={confirmPassword}
+                                            onChange={(e) => setConfirmPassword(e.target.value)}
+                                            className="h-11 rounded-xl border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 focus:bg-white dark:focus:bg-slate-700 transition-all text-slate-900 dark:text-slate-100"
+                                        />
+                                    </div>
 
-                                <div className="space-y-2">
-                                    <Label htmlFor="confirm" className="text-sm font-medium text-slate-700">Confirm Password</Label>
-                                    <Input
-                                        id="confirm"
-                                        type="password"
-                                        value={confirmPassword}
-                                        onChange={(e) => setConfirmPassword(e.target.value)}
-                                        className="h-11 rounded-xl border-slate-200 bg-slate-50 focus:bg-white transition-all"
-                                    />
-                                </div>
-
-                                <div className="pt-2">
                                     <Button
                                         type="submit"
                                         disabled={loading}
@@ -216,11 +256,11 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
                                         {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                                         {user?.hasPassword ? "Update Password" : "Set Password"}
                                     </Button>
-                                </div>
-                            </form>
-                        </TabsContent>
+                                </form>
+                            </div>
+                        )}
                     </div>
-                </Tabs>
+                </div>
             </DialogContent>
         </Dialog>
     );

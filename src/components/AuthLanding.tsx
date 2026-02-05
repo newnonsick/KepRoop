@@ -162,7 +162,7 @@ export default function AuthLanding({ googleClientId }: AuthLandingProps) {
 
     if (isLoading) {
         return (
-            <div className="min-h-screen flex items-center justify-center bg-white">
+            <div className="min-h-screen flex items-center justify-center bg-white dark:bg-slate-900">
                 <Loader2 className="h-8 w-8 animate-spin text-blue-500" />
             </div>
         );
@@ -177,7 +177,7 @@ export default function AuthLanding({ googleClientId }: AuthLandingProps) {
             />
 
             {/* Left Side - Branding */}
-            <div className="hidden lg:flex lg:w-1/2 bg-gradient-to-br from-blue-50 via-blue-100/50 to-sky-50 relative overflow-hidden">
+            <div className="hidden lg:flex lg:w-1/2 bg-gradient-to-br from-blue-50 via-blue-100/50 to-sky-50 dark:from-slate-800 dark:via-slate-900 dark:to-slate-800 relative overflow-hidden">
                 {/* Decorative Elements */}
                 <div className="absolute top-20 left-20 w-72 h-72 bg-blue-200/40 rounded-full blur-3xl" />
                 <div className="absolute bottom-32 right-16 w-96 h-96 bg-sky-200/30 rounded-full blur-3xl" />
@@ -186,41 +186,41 @@ export default function AuthLanding({ googleClientId }: AuthLandingProps) {
                 <div className="relative z-10 flex flex-col justify-center px-16 xl:px-24">
                     {/* Logo */}
                     <div className="mb-12 flex items-center gap-3">
-                        <div className="w-12 h-12 relative overflow-hidden rounded-2xl shadow-xl shadow-blue-500/10 border border-white">
+                        <div className="w-12 h-12 relative overflow-hidden rounded-2xl shadow-xl shadow-blue-500/10">
                             <img src="/logo.png" alt="KepRoop Logo" className="w-full h-full object-cover" />
                         </div>
-                        <h2 className="text-3xl font-bold text-slate-800 tracking-tight">KepRoop</h2>
+                        <h2 className="text-3xl font-bold text-slate-800 dark:text-slate-100 tracking-tight">KepRoop</h2>
                     </div>
 
-                    <h1 className="text-5xl xl:text-6xl font-bold text-slate-800 tracking-tight leading-[1.1] mb-6">
+                    <h1 className="text-5xl xl:text-6xl font-bold text-slate-800 dark:text-slate-100 tracking-tight leading-[1.1] mb-6">
                         Your memories,<br />
                         <span className="text-blue-500">
                             beautifully organized
                         </span>
                     </h1>
 
-                    <p className="text-lg text-slate-600 max-w-md leading-relaxed mb-12">
+                    <p className="text-lg text-slate-600 dark:text-slate-400 max-w-md leading-relaxed mb-12">
                         Create albums, upload photos, and share moments with the people who matter. Simple, secure, beautiful.
                     </p>
 
                     {/* Features */}
                     <div className="flex gap-6">
-                        <div className="flex items-center gap-3 bg-white/60 backdrop-blur-sm rounded-2xl px-5 py-4 shadow-sm">
+                        <div className="flex items-center gap-3 bg-white/60 dark:bg-slate-800/60 backdrop-blur-sm rounded-2xl px-5 py-4 shadow-sm">
                             <div className="w-10 h-10 bg-blue-500 rounded-xl flex items-center justify-center">
                                 <Shield className="h-5 w-5 text-white" />
                             </div>
                             <div>
-                                <p className="font-semibold text-slate-800">100% Private</p>
-                                <p className="text-sm text-slate-500">Your data is yours</p>
+                                <p className="font-semibold text-slate-800 dark:text-slate-100">100% Private</p>
+                                <p className="text-sm text-slate-500 dark:text-slate-400">Your data is yours</p>
                             </div>
                         </div>
-                        <div className="flex items-center gap-3 bg-white/60 backdrop-blur-sm rounded-2xl px-5 py-4 shadow-sm">
+                        <div className="flex items-center gap-3 bg-white/60 dark:bg-slate-800/60 backdrop-blur-sm rounded-2xl px-5 py-4 shadow-sm">
                             <div className="w-10 h-10 bg-blue-500 rounded-xl flex items-center justify-center">
                                 <Users className="h-5 w-5 text-white" />
                             </div>
                             <div>
-                                <p className="font-semibold text-slate-800">Easy Sharing</p>
-                                <p className="text-sm text-slate-500">Invite anyone</p>
+                                <p className="font-semibold text-slate-800 dark:text-slate-100">Easy Sharing</p>
+                                <p className="text-sm text-slate-500 dark:text-slate-400">Invite anyone</p>
                             </div>
                         </div>
                     </div>
@@ -228,22 +228,22 @@ export default function AuthLanding({ googleClientId }: AuthLandingProps) {
             </div>
 
             {/* Right Side - Auth Form */}
-            <div className="flex-1 flex flex-col justify-center px-4 sm:px-12 lg:px-16 xl:px-24 bg-white">
+            <div className="flex-1 flex flex-col justify-center px-4 sm:px-12 lg:px-16 xl:px-24 bg-white dark:bg-slate-900">
                 <div className="w-full max-w-[400px] mx-auto">
                     {/* Mobile Logo */}
                     <div className="lg:hidden mb-10 flex items-center gap-3">
-                        <div className="w-10 h-10 relative overflow-hidden rounded-2xl shadow-xl shadow-blue-500/10 border border-white">
+                        <div className="w-10 h-10 relative overflow-hidden rounded-2xl shadow-xl shadow-blue-500/10">
                             <img src="/logo.png" alt="KepRoop Logo" className="w-full h-full object-cover" />
                         </div>
-                        <h2 className="text-2xl font-bold text-slate-800">KepRoop</h2>
+                        <h2 className="text-2xl font-bold text-slate-800 dark:text-slate-100">KepRoop</h2>
                     </div>
 
                     {/* Header */}
                     <div className="mb-8">
-                        <h1 className="text-2xl font-semibold text-slate-800 mb-2">
+                        <h1 className="text-2xl font-semibold text-slate-800 dark:text-slate-100 mb-2">
                             {mode === "login" ? "Welcome back" : "Create your account"}
                         </h1>
-                        <p className="text-slate-500">
+                        <p className="text-slate-500 dark:text-slate-400">
                             {mode === "login"
                                 ? "Enter your credentials to continue"
                                 : "Start organizing your photos today"}
@@ -252,7 +252,7 @@ export default function AuthLanding({ googleClientId }: AuthLandingProps) {
 
                     {/* Error Display */}
                     {error && (
-                        <div className="mb-6 p-4 bg-red-50 border border-red-100 rounded-2xl">
+                        <div className="mb-6 p-4 bg-red-50 dark:bg-red-900/20 border border-red-100 dark:border-red-800 rounded-2xl">
                             <p className="text-sm text-red-600">{error}</p>
                         </div>
                     )}
@@ -263,8 +263,8 @@ export default function AuthLanding({ googleClientId }: AuthLandingProps) {
                     </div>
 
                     <div className="relative mb-6">
-                        <Separator className="bg-slate-200" />
-                        <span className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 bg-white px-4 text-xs text-slate-400 uppercase tracking-wide">
+                        <Separator className="bg-slate-200 dark:bg-slate-700" />
+                        <span className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 bg-white dark:bg-slate-900 px-4 text-xs text-slate-400 dark:text-slate-500 uppercase tracking-wide">
                             or
                         </span>
                     </div>
@@ -273,7 +273,7 @@ export default function AuthLanding({ googleClientId }: AuthLandingProps) {
                     <form onSubmit={handleSubmit} className="space-y-4">
                         {mode === "register" && (
                             <div className="space-y-2">
-                                <Label htmlFor="name" className="text-sm font-medium text-slate-700">
+                                <Label htmlFor="name" className="text-sm font-medium text-slate-700 dark:text-slate-300">
                                     Full name
                                 </Label>
                                 <Input
@@ -283,13 +283,13 @@ export default function AuthLanding({ googleClientId }: AuthLandingProps) {
                                     onChange={(e) => setName(e.target.value)}
                                     placeholder="John Doe"
                                     disabled={loading}
-                                    className="h-12 bg-slate-50 border-slate-200 focus:bg-white focus:border-blue-500 focus:ring-blue-500/20 transition-all rounded-xl"
+                                    className="h-12 bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 focus:bg-white dark:focus:bg-slate-800 focus:border-blue-500 focus:ring-blue-500/20 transition-all rounded-xl dark:text-slate-100"
                                 />
                             </div>
                         )}
 
                         <div className="space-y-2">
-                            <Label htmlFor="email" className="text-sm font-medium text-slate-700">
+                            <Label htmlFor="email" className="text-sm font-medium text-slate-700 dark:text-slate-300">
                                 Email address
                             </Label>
                             <Input
@@ -299,12 +299,12 @@ export default function AuthLanding({ googleClientId }: AuthLandingProps) {
                                 onChange={(e) => setEmail(e.target.value)}
                                 placeholder="you@example.com"
                                 disabled={loading}
-                                className="h-12 bg-slate-50 border-slate-200 focus:bg-white focus:border-blue-500 focus:ring-blue-500/20 transition-all rounded-xl"
+                                className="h-12 bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 focus:bg-white dark:focus:bg-slate-800 focus:border-blue-500 focus:ring-blue-500/20 transition-all rounded-xl dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500"
                             />
                         </div>
 
                         <div className="space-y-2">
-                            <Label htmlFor="password" className="text-sm font-medium text-slate-700">
+                            <Label htmlFor="password" className="text-sm font-medium text-slate-700 dark:text-slate-300">
                                 Password
                             </Label>
                             <div className="relative">
@@ -315,7 +315,7 @@ export default function AuthLanding({ googleClientId }: AuthLandingProps) {
                                     onChange={(e) => setPassword(e.target.value)}
                                     placeholder="••••••••"
                                     disabled={loading}
-                                    className="h-12 bg-slate-50 border-slate-200 focus:bg-white focus:border-blue-500 focus:ring-blue-500/20 transition-all pr-12 rounded-xl"
+                                    className="h-12 bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 focus:bg-white dark:focus:bg-slate-800 focus:border-blue-500 focus:ring-blue-500/20 transition-all pr-12 rounded-xl dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500"
                                 />
                                 <button
                                     type="button"
@@ -339,8 +339,8 @@ export default function AuthLanding({ googleClientId }: AuthLandingProps) {
                                         <span
                                             key={req.key}
                                             className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-medium transition-all ${passValidities[req.key as keyof typeof passValidities]
-                                                ? "bg-blue-50 text-blue-600"
-                                                : "bg-slate-100 text-slate-400"
+                                                ? "bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400"
+                                                : "bg-slate-100 dark:bg-slate-700 text-slate-400 dark:text-slate-500"
                                                 }`}
                                         >
                                             {passValidities[req.key as keyof typeof passValidities] && (
@@ -362,7 +362,7 @@ export default function AuthLanding({ googleClientId }: AuthLandingProps) {
                                 />
                                 <Label
                                     htmlFor="remember"
-                                    className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 text-slate-600"
+                                    className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 text-slate-600 dark:text-slate-400"
                                 >
                                     Remember me
                                 </Label>
@@ -371,7 +371,7 @@ export default function AuthLanding({ googleClientId }: AuthLandingProps) {
 
                         {mode === "register" && (
                             <div className="space-y-2">
-                                <Label htmlFor="confirmPassword" className="text-sm font-medium text-slate-700">
+                                <Label htmlFor="confirmPassword" className="text-sm font-medium text-slate-700 dark:text-slate-300">
                                     Confirm password
                                 </Label>
                                 <Input
@@ -381,7 +381,7 @@ export default function AuthLanding({ googleClientId }: AuthLandingProps) {
                                     onChange={(e) => setConfirmPassword(e.target.value)}
                                     placeholder="••••••••"
                                     disabled={loading}
-                                    className={`h-12 bg-slate-50 border-slate-200 focus:bg-white focus:border-blue-500 focus:ring-blue-500/20 transition-all rounded-xl ${confirmPassword && !passwordsMatch ? "border-red-300 focus:border-red-500 focus:ring-red-500/20" : ""
+                                    className={`h-12 bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 focus:bg-white dark:focus:bg-slate-800 focus:border-blue-500 focus:ring-blue-500/20 transition-all rounded-xl dark:text-slate-100 ${confirmPassword && !passwordsMatch ? "border-red-300 focus:border-red-500 focus:ring-red-500/20" : ""
                                         }`}
                                 />
                                 {confirmPassword && !passwordsMatch && (
@@ -392,7 +392,7 @@ export default function AuthLanding({ googleClientId }: AuthLandingProps) {
 
                         <Button
                             type="submit"
-                            className="w-full h-12 text-base font-medium mt-2 bg-blue-500 hover:bg-blue-600 text-white shadow-lg shadow-blue-500/25 hover:shadow-blue-500/35 transition-all rounded-xl"
+                            className="w-full h-12 text-base font-medium mt-2 bg-blue-500 hover:bg-blue-600 text-white shadow-lg shadow-blue-500/25 hover:shadow-blue-500/20 transition-all rounded-xl disabled:shadow-none"
                             disabled={loading || !isFormValid()}
                         >
                             {loading ? (
@@ -404,7 +404,7 @@ export default function AuthLanding({ googleClientId }: AuthLandingProps) {
                     </form>
 
                     {/* Toggle Mode */}
-                    <p className="text-center text-sm text-slate-500 mt-8">
+                    <p className="text-center text-sm text-slate-500 dark:text-slate-400 mt-8">
                         {mode === "login" ? (
                             <>
                                 Don&apos;t have an account?{" "}

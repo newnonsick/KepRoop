@@ -266,16 +266,16 @@ export function ShareAlbumDialog({ albumId, albumTitle, albumVisibility = "priva
         <Dialog open={open} onOpenChange={handleOpenChange}>
             <DialogTrigger asChild>
                 {trigger || (
-                    <Button variant="outline" size="sm" className="border-slate-200 text-slate-600 hover:bg-slate-50 hover:text-slate-800 rounded-xl">
+                    <Button variant="outline" size="sm" className="border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 hover:text-slate-800 dark:hover:text-slate-100 rounded-xl">
                         Share
                     </Button>
                 )}
             </DialogTrigger>
-            <DialogContent className="sm:max-w-md rounded-3xl border-slate-100 shadow-2xl bg-white p-0 overflow-hidden flex flex-col max-h-[90vh]">
+            <DialogContent className="sm:max-w-md rounded-3xl border-slate-100 dark:border-slate-700 shadow-2xl bg-white dark:bg-slate-900 p-0 overflow-hidden flex flex-col max-h-[90vh]">
                 <div className="p-6 pb-0">
                     <DialogHeader>
-                        <DialogTitle className="text-xl text-slate-800">Album Access</DialogTitle>
-                        <DialogDescription className="text-slate-500">
+                        <DialogTitle className="text-xl text-slate-800 dark:text-slate-100">Album Access</DialogTitle>
+                        <DialogDescription className="text-slate-500 dark:text-slate-400">
                             Manage members and share links for &quot;{albumTitle}&quot;
                         </DialogDescription>
                     </DialogHeader>
@@ -283,7 +283,7 @@ export function ShareAlbumDialog({ albumId, albumTitle, albumVisibility = "priva
 
                 <div className="flex-1 p-6 pt-4 min-h-0 flex flex-col gap-6">
                     {error && (
-                        <div className="p-3 bg-red-50 border border-red-100 rounded-2xl text-sm text-red-600">
+                        <div className="p-3 bg-red-50 dark:bg-red-900/20 border border-red-100 dark:border-red-800 rounded-2xl text-sm text-red-600 dark:text-red-400">
                             {error}
                         </div>
                     )}
@@ -291,9 +291,9 @@ export function ShareAlbumDialog({ albumId, albumTitle, albumVisibility = "priva
                     {/* Member List Section */}
                     <div className="space-y-4">
                         <div className="flex items-center justify-between ml-1">
-                            <Label className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Members</Label>
+                            <Label className="text-xs font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider">Members</Label>
                             {members.length > 3 && (
-                                <span className="text-[10px] font-medium text-slate-400">{members.length} total</span>
+                                <span className="text-[10px] font-medium text-slate-400 dark:text-slate-500">{members.length} total</span>
                             )}
                         </div>
 
@@ -303,7 +303,7 @@ export function ShareAlbumDialog({ albumId, albumTitle, albumVisibility = "priva
                                 placeholder="Search members by name or email..."
                                 value={searchQuery}
                                 onChange={(e) => setSearchQuery(e.target.value)}
-                                className="h-9 bg-slate-50 border-slate-100 rounded-xl text-xs px-3 focus:bg-white transition-all placeholder:text-slate-400"
+                                className="h-9 bg-slate-50 dark:bg-slate-800 border-slate-100 dark:border-slate-700 rounded-xl text-xs px-3 focus:bg-white dark:focus:bg-slate-800 transition-all placeholder:text-slate-400 dark:placeholder:text-slate-500 dark:text-slate-100"
                             />
                         </div>
 
@@ -315,13 +315,13 @@ export function ShareAlbumDialog({ albumId, albumTitle, albumVisibility = "priva
                                     </div>
                                 ) : filteredMembers.length === 0 ? (
                                     <div className="flex flex-col items-center justify-center py-10 text-center">
-                                        <Users className="h-8 w-8 text-slate-100 mb-2" />
-                                        <p className="text-xs text-slate-400">No members found</p>
+                                        <Users className="h-8 w-8 text-slate-100 dark:text-slate-700 mb-2" />
+                                        <p className="text-xs text-slate-400 dark:text-slate-500">No members found</p>
                                     </div>
                                 ) : (
                                     filteredMembers.map((member) => (
-                                        <div key={member.userId} className="flex items-center gap-3 p-2 rounded-2xl hover:bg-slate-50 transition-colors group">
-                                            <Avatar className="h-8 w-8 border border-slate-100 shadow-sm">
+                                        <div key={member.userId} className="flex items-center gap-3 p-2 rounded-2xl hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors group">
+                                            <Avatar className="h-8 w-8 border border-slate-100 dark:border-slate-700 shadow-sm">
                                                 <AvatarImage src={member.user.avatarUrl || undefined} />
                                                 <AvatarFallback className="bg-blue-500 text-white text-[9px] font-bold">
                                                     {getInitials(member.user.name)}
@@ -329,7 +329,7 @@ export function ShareAlbumDialog({ albumId, albumTitle, albumVisibility = "priva
                                             </Avatar>
                                             <div className="flex-1 min-w-0">
                                                 <div className="flex items-center gap-2">
-                                                    <p className="text-sm font-medium text-slate-800 truncate group-hover:text-blue-600">
+                                                    <p className="text-sm font-medium text-slate-800 dark:text-slate-100 truncate group-hover:text-blue-600 dark:group-hover:text-blue-400">
                                                         {member.user.name} {member.userId === currentUserId && "(You)"}
                                                     </p>
                                                     {member.role === "owner" && (
@@ -338,42 +338,42 @@ export function ShareAlbumDialog({ albumId, albumTitle, albumVisibility = "priva
                                                         </Badge>
                                                     )}
                                                 </div>
-                                                <p className="text-xs text-slate-500 truncate">{member.user.email}</p>
+                                                <p className="text-xs text-slate-500 dark:text-slate-400 truncate">{member.user.email}</p>
                                             </div>
 
                                             {isOwner && member.role !== "owner" ? (
                                                 <DropdownMenu>
                                                     <DropdownMenuTrigger asChild>
-                                                        <Button variant="ghost" size="sm" className="h-7 px-2 text-[11px] font-medium text-slate-600 gap-1 rounded-lg hover:bg-white border border-transparent hover:border-slate-100 shadow-none">
+                                                        <Button variant="ghost" size="sm" className="h-7 px-2 text-[11px] font-medium text-slate-600 dark:text-slate-300 gap-1 rounded-lg hover:bg-white dark:hover:bg-slate-700 border border-transparent hover:border-slate-100 dark:hover:border-slate-600 shadow-none">
                                                             <span className="capitalize">{member.role}</span>
-                                                            <ChevronDown className="h-3 w-3 text-slate-400" />
+                                                            <ChevronDown className="h-3 w-3 text-slate-400 dark:text-slate-500" />
                                                         </Button>
                                                     </DropdownMenuTrigger>
-                                                    <DropdownMenuContent align="end" className="rounded-xl border-slate-100 shadow-lg min-w-32">
+                                                    <DropdownMenuContent align="end" className="rounded-xl border-slate-100 dark:border-slate-700 dark:bg-slate-800 shadow-lg min-w-32">
                                                         <DropdownMenuItem
                                                             onClick={() => updateMemberRole(member.userId, "viewer")}
-                                                            className={cn("rounded-lg text-sm", member.role === "viewer" && "bg-slate-50 font-medium text-blue-600")}
+                                                            className={cn("rounded-lg text-sm dark:text-slate-200", member.role === "viewer" && "bg-slate-50 dark:bg-slate-700 font-medium text-blue-600 dark:text-blue-400")}
                                                         >
                                                             Viewer
                                                         </DropdownMenuItem>
                                                         <DropdownMenuItem
                                                             onClick={() => updateMemberRole(member.userId, "editor")}
-                                                            className={cn("rounded-lg text-sm", member.role === "editor" && "bg-slate-50 font-medium text-blue-600")}
+                                                            className={cn("rounded-lg text-sm dark:text-slate-200", member.role === "editor" && "bg-slate-50 dark:bg-slate-700 font-medium text-blue-600 dark:text-blue-400")}
                                                         >
                                                             Editor
                                                         </DropdownMenuItem>
 
                                                         <DropdownMenuItem
                                                             onClick={() => updateMemberRole(member.userId, "owner")}
-                                                            className="rounded-lg text-sm"
+                                                            className="rounded-lg text-sm dark:text-slate-200"
                                                         >
                                                             Joint Owner
                                                         </DropdownMenuItem>
 
-                                                        <DropdownMenuSeparator className="bg-slate-50/50" />
+                                                        <DropdownMenuSeparator className="bg-slate-50/50 dark:bg-slate-700" />
                                                         <DropdownMenuItem
                                                             onClick={() => removeMember(member.userId)}
-                                                            className="text-red-500 focus:text-red-600 focus:bg-red-50 rounded-lg text-sm"
+                                                            className="text-red-500 focus:text-red-600 focus:bg-red-50 dark:focus:bg-red-900/30 rounded-lg text-sm"
                                                         >
                                                             <UserMinus className="h-4 w-4 mr-2" />
                                                             Remove
@@ -386,28 +386,28 @@ export function ShareAlbumDialog({ albumId, albumTitle, albumVisibility = "priva
                                             {isCurrentUserOriginalOwner && member.role === "owner" && !isOriginalOwner(member.userId) && (
                                                 <DropdownMenu>
                                                     <DropdownMenuTrigger asChild>
-                                                        <Button variant="ghost" size="sm" className="h-7 px-2 text-[11px] font-medium text-slate-600 gap-1 rounded-lg hover:bg-white border border-transparent hover:border-slate-100 shadow-none">
+                                                        <Button variant="ghost" size="sm" className="h-7 px-2 text-[11px] font-medium text-slate-600 dark:text-slate-300 gap-1 rounded-lg hover:bg-white dark:hover:bg-slate-700 border border-transparent hover:border-slate-100 dark:hover:border-slate-600 shadow-none">
                                                             <span>Manage</span>
-                                                            <ChevronDown className="h-3 w-3 text-slate-400" />
+                                                            <ChevronDown className="h-3 w-3 text-slate-400 dark:text-slate-500" />
                                                         </Button>
                                                     </DropdownMenuTrigger>
-                                                    <DropdownMenuContent align="end" className="rounded-xl border-slate-100 shadow-lg min-w-32">
+                                                    <DropdownMenuContent align="end" className="rounded-xl border-slate-100 dark:border-slate-700 dark:bg-slate-800 shadow-lg min-w-32">
                                                         <DropdownMenuItem
                                                             onClick={() => updateMemberRole(member.userId, "editor")}
-                                                            className="rounded-lg text-sm"
+                                                            className="rounded-lg text-sm dark:text-slate-200"
                                                         >
                                                             Demote to Editor
                                                         </DropdownMenuItem>
                                                         <DropdownMenuItem
                                                             onClick={() => updateMemberRole(member.userId, "viewer")}
-                                                            className="rounded-lg text-sm"
+                                                            className="rounded-lg text-sm dark:text-slate-200"
                                                         >
                                                             Demote to Viewer
                                                         </DropdownMenuItem>
-                                                        <DropdownMenuSeparator className="bg-slate-50/50" />
+                                                        <DropdownMenuSeparator className="bg-slate-50/50 dark:bg-slate-700" />
                                                         <DropdownMenuItem
                                                             onClick={() => removeMember(member.userId)}
-                                                            className="text-red-500 focus:text-red-600 focus:bg-red-50 rounded-lg text-sm"
+                                                            className="text-red-500 focus:text-red-600 focus:bg-red-50 dark:focus:bg-red-900/30 rounded-lg text-sm"
                                                         >
                                                             <UserMinus className="h-4 w-4 mr-2" />
                                                             Remove
@@ -422,13 +422,13 @@ export function ShareAlbumDialog({ albumId, albumTitle, albumVisibility = "priva
                         </ScrollArea>
                     </div>
 
-                    <Separator className="bg-slate-50" />
+                    <Separator className="bg-slate-50 dark:bg-slate-800" />
 
                     {/* Invite Links */}
                     {canShareAsEditor && (
                         <div className="space-y-4">
                             <div className="space-y-2">
-                                <Label className="text-xs font-semibold text-slate-400 uppercase tracking-wider ml-1">Invite Link</Label>
+                                <Label className="text-xs font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider ml-1">Invite Link</Label>
                                 <div className="grid grid-cols-2 gap-2">
                                     <button
                                         type="button"
@@ -436,8 +436,8 @@ export function ShareAlbumDialog({ albumId, albumTitle, albumVisibility = "priva
                                         className={cn(
                                             "p-3 rounded-2xl border-2 text-left transition-all",
                                             inviteRole === "viewer"
-                                                ? "border-blue-500 bg-blue-50 text-blue-600"
-                                                : "border-slate-100 hover:border-slate-200 bg-white text-slate-500"
+                                                ? "border-blue-500 bg-blue-50 dark:bg-blue-900/30 text-blue-600"
+                                                : "border-slate-100 dark:border-slate-700 hover:border-slate-200 dark:hover:border-slate-600 bg-white dark:bg-slate-800 text-slate-500 dark:text-slate-400"
                                         )}
                                     >
                                         <p className="text-sm font-bold">Viewer</p>
@@ -449,8 +449,8 @@ export function ShareAlbumDialog({ albumId, albumTitle, albumVisibility = "priva
                                         className={cn(
                                             "p-3 rounded-2xl border-2 text-left transition-all",
                                             inviteRole === "editor"
-                                                ? "border-blue-500 bg-blue-50 text-blue-600"
-                                                : "border-slate-100 hover:border-slate-200 bg-white text-slate-500"
+                                                ? "border-blue-500 bg-blue-50 dark:bg-blue-900/30 text-blue-600"
+                                                : "border-slate-100 dark:border-slate-700 hover:border-slate-200 dark:hover:border-slate-600 bg-white dark:bg-slate-800 text-slate-500 dark:text-slate-400"
                                         )}
                                     >
                                         <p className="text-sm font-bold">Editor</p>
@@ -478,7 +478,7 @@ export function ShareAlbumDialog({ albumId, albumTitle, albumVisibility = "priva
                                         <Input
                                             value={inviteLink}
                                             readOnly
-                                            className="flex-1 h-12 bg-slate-50 border-slate-100 rounded-2xl text-[13px] font-mono text-slate-600 px-4"
+                                            className="flex-1 h-12 bg-slate-50 dark:bg-slate-800 border-slate-100 dark:border-slate-700 rounded-2xl text-[13px] font-mono text-slate-600 dark:text-slate-300 px-4"
                                         />
                                         <Button
                                             onClick={copyToClipboard}
@@ -497,7 +497,7 @@ export function ShareAlbumDialog({ albumId, albumTitle, albumVisibility = "priva
                                             size="sm"
                                             onClick={renewInvite}
                                             disabled={loading}
-                                            className="flex-1 h-10 rounded-xl border-slate-100 text-slate-500 hover:text-blue-600 hover:bg-blue-50 text-xs font-semibold gap-1.5"
+                                            className="flex-1 h-10 rounded-xl border-slate-100 dark:border-slate-700 text-slate-500 dark:text-slate-400 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/30 text-xs font-semibold gap-1.5"
                                         >
                                             <RefreshCw className={cn("h-3 w-3", loading && "animate-spin")} />
                                             Renew
@@ -507,7 +507,7 @@ export function ShareAlbumDialog({ albumId, albumTitle, albumVisibility = "priva
                                             size="sm"
                                             onClick={deleteInvite}
                                             disabled={loading}
-                                            className="flex-1 h-10 rounded-xl border-slate-100 text-slate-500 hover:text-red-600 hover:bg-red-50 text-xs font-semibold gap-1.5"
+                                            className="flex-1 h-10 rounded-xl border-slate-100 dark:border-slate-700 text-slate-500 dark:text-slate-400 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/30 text-xs font-semibold gap-1.5"
                                         >
                                             <Trash2 className="h-3 w-3" />
                                             Delete

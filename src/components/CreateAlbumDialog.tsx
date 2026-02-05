@@ -158,23 +158,23 @@ export function CreateAlbumDialog({ trigger, onSuccess }: CreateAlbumDialogProps
                     </Button>
                 )}
             </DialogTrigger>
-            <DialogContent className="sm:max-w-md rounded-2xl border-slate-100 shadow-xl bg-white">
+            <DialogContent className="sm:max-w-md rounded-2xl border-slate-100 dark:border-slate-700 shadow-xl bg-white dark:bg-slate-900">
                 <DialogHeader>
-                    <DialogTitle className="text-xl text-slate-800">Create album</DialogTitle>
-                    <DialogDescription className="text-slate-500">
+                    <DialogTitle className="text-xl text-slate-800 dark:text-slate-100">Create album</DialogTitle>
+                    <DialogDescription className="text-slate-500 dark:text-slate-400">
                         Create a new photo album
                     </DialogDescription>
                 </DialogHeader>
 
                 <form onSubmit={handleSubmit} className="space-y-5 mt-4">
                     {error && (
-                        <div className="p-3 bg-red-50 border border-red-100 rounded-xl text-sm text-red-600">
+                        <div className="p-3 bg-red-50 dark:bg-red-900/20 border border-red-100 dark:border-red-800 rounded-xl text-sm text-red-600 dark:text-red-400">
                             {error}
                         </div>
                     )}
 
                     <div className="space-y-2">
-                        <Label htmlFor="title" className="text-sm font-medium text-slate-700">
+                        <Label htmlFor="title" className="text-sm font-medium text-slate-700 dark:text-slate-300">
                             Album name
                         </Label>
                         <Input
@@ -183,18 +183,18 @@ export function CreateAlbumDialog({ trigger, onSuccess }: CreateAlbumDialogProps
                             onChange={(e) => setTitle(e.target.value)}
                             placeholder="Summer 2024"
                             disabled={loading}
-                            className="h-11 bg-slate-50 border-slate-200 focus:bg-white focus:border-blue-500 focus:ring-blue-500/20 rounded-xl placeholder:text-slate-400"
+                            className="h-11 bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 focus:bg-white dark:focus:bg-slate-800 focus:border-blue-500 focus:ring-blue-500/20 rounded-xl placeholder:text-slate-400 dark:text-slate-100"
                             autoFocus
                         />
                     </div>
 
                     <div className="space-y-2">
-                        <Label className="text-sm font-medium text-slate-700">Cover Image <span className="text-slate-400 font-normal">(optional)</span></Label>
+                        <Label className="text-sm font-medium text-slate-700 dark:text-slate-300">Cover Image <span className="text-slate-400 dark:text-slate-500 font-normal">(optional)</span></Label>
                         <div
                             className={`relative group/cover aspect-[2/1] rounded-2xl border-2 border-dashed transition-all overflow-hidden flex flex-col items-center justify-center cursor-pointer
                                 ${dragActive
-                                    ? "border-blue-500 bg-blue-50 scale-[1.02] shadow-lg shadow-blue-500/10"
-                                    : "border-slate-200 bg-slate-50 hover:border-blue-300 hover:bg-blue-50/30"
+                                    ? "border-blue-500 bg-blue-50 dark:bg-blue-900/30 scale-[1.02] shadow-lg shadow-blue-500/10"
+                                    : "border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 hover:border-blue-300 dark:hover:border-blue-600 hover:bg-blue-50/30 dark:hover:bg-blue-900/20"
                                 }`}
                             onDragEnter={handleDrag}
                             onDragLeave={handleDrag}
@@ -230,7 +230,7 @@ export function CreateAlbumDialog({ trigger, onSuccess }: CreateAlbumDialogProps
                                     className="flex flex-col items-center gap-2 text-slate-400 group-hover/cover:text-blue-500 w-full h-full justify-center"
                                     onClick={() => document.getElementById('cover-upload')?.click()}
                                 >
-                                    <div className={`w-10 h-10 rounded-xl bg-white border border-slate-100 shadow-sm flex items-center justify-center transition-transform ${dragActive ? "scale-110" : "group-hover/cover:scale-110"}`}>
+                                    <div className={`w-10 h-10 rounded-xl bg-white dark:bg-slate-700 border border-slate-100 dark:border-slate-600 shadow-sm flex items-center justify-center transition-transform ${dragActive ? "scale-110" : "group-hover/cover:scale-110"}`}>
                                         <Camera className="h-5 w-5" />
                                     </div>
                                     <span className="text-xs font-medium">
@@ -249,7 +249,7 @@ export function CreateAlbumDialog({ trigger, onSuccess }: CreateAlbumDialogProps
                     </div>
 
                     <div className="space-y-2">
-                        <Label htmlFor="description" className="text-sm font-medium text-slate-700">
+                        <Label htmlFor="description" className="text-sm font-medium text-slate-700 dark:text-slate-300">
                             Description <span className="text-slate-400 font-normal">(optional)</span>
                         </Label>
                         <Input
@@ -258,12 +258,12 @@ export function CreateAlbumDialog({ trigger, onSuccess }: CreateAlbumDialogProps
                             onChange={(e) => setDescription(e.target.value)}
                             placeholder="A collection of memories"
                             disabled={loading}
-                            className="h-11 bg-slate-50 border-slate-200 focus:bg-white focus:border-blue-500 focus:ring-blue-500/20 rounded-xl placeholder:text-slate-400"
+                            className="h-11 bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 focus:bg-white dark:focus:bg-slate-800 focus:border-blue-500 focus:ring-blue-500/20 rounded-xl placeholder:text-slate-400 dark:text-slate-100"
                         />
                     </div>
 
                     <div className="space-y-2">
-                        <Label htmlFor="date" className="text-sm font-medium text-slate-700">
+                        <Label htmlFor="date" className="text-sm font-medium text-slate-700 dark:text-slate-300">
                             Album date
                         </Label>
                         <Input
@@ -272,20 +272,20 @@ export function CreateAlbumDialog({ trigger, onSuccess }: CreateAlbumDialogProps
                             value={date}
                             onChange={(e) => setDate(e.target.value)}
                             disabled={loading}
-                            className="h-11 bg-slate-50 border-slate-200 focus:bg-white focus:border-blue-500 focus:ring-blue-500/20 rounded-xl"
+                            className="h-11 bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 focus:bg-white dark:focus:bg-slate-800 focus:border-blue-500 focus:ring-blue-500/20 rounded-xl dark:text-slate-100"
                         />
                     </div>
 
                     <div className="space-y-2">
-                        <Label className="text-sm font-medium text-slate-700">Visibility</Label>
+                        <Label className="text-sm font-medium text-slate-700 dark:text-slate-300">Visibility</Label>
                         <div className="grid grid-cols-2 gap-3">
                             <button
                                 type="button"
                                 onClick={() => setVisibility("private")}
                                 disabled={loading}
                                 className={`flex items-center gap-3 p-3 rounded-xl border-2 text-left transition-all ${visibility === "private"
-                                    ? "border-blue-500 bg-blue-50"
-                                    : "border-slate-200 hover:border-slate-300 bg-white"
+                                    ? "border-blue-500 bg-blue-50 dark:bg-blue-900/30"
+                                    : "border-slate-200 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-600 bg-white dark:bg-slate-800"
                                     }`}
                             >
                                 <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${visibility === "private" ? "bg-blue-500 text-white" : "bg-slate-100 text-slate-500"
@@ -293,8 +293,8 @@ export function CreateAlbumDialog({ trigger, onSuccess }: CreateAlbumDialogProps
                                     <Lock className="h-4 w-4" />
                                 </div>
                                 <div>
-                                    <p className="text-sm font-medium text-slate-800">Private</p>
-                                    <p className="text-xs text-slate-500">Invite only</p>
+                                    <p className="text-sm font-medium text-slate-800 dark:text-slate-100">Private</p>
+                                    <p className="text-xs text-slate-500 dark:text-slate-400">Invite only</p>
                                 </div>
                             </button>
                             <button
@@ -302,8 +302,8 @@ export function CreateAlbumDialog({ trigger, onSuccess }: CreateAlbumDialogProps
                                 onClick={() => setVisibility("public")}
                                 disabled={loading}
                                 className={`flex items-center gap-3 p-3 rounded-xl border-2 text-left transition-all ${visibility === "public"
-                                    ? "border-blue-500 bg-blue-50"
-                                    : "border-slate-200 hover:border-slate-300 bg-white"
+                                    ? "border-blue-500 bg-blue-50 dark:bg-blue-900/30"
+                                    : "border-slate-200 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-600 bg-white dark:bg-slate-800"
                                     }`}
                             >
                                 <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${visibility === "public" ? "bg-blue-500 text-white" : "bg-slate-100 text-slate-500"
@@ -311,8 +311,8 @@ export function CreateAlbumDialog({ trigger, onSuccess }: CreateAlbumDialogProps
                                     <Globe className="h-4 w-4" />
                                 </div>
                                 <div>
-                                    <p className="text-sm font-medium text-slate-800">Public</p>
-                                    <p className="text-xs text-slate-500">Anyone with link</p>
+                                    <p className="text-sm font-medium text-slate-800 dark:text-slate-100">Public</p>
+                                    <p className="text-xs text-slate-500 dark:text-slate-400">Anyone with link</p>
                                 </div>
                             </button>
                         </div>
@@ -324,7 +324,7 @@ export function CreateAlbumDialog({ trigger, onSuccess }: CreateAlbumDialogProps
                             variant="outline"
                             onClick={() => setOpen(false)}
                             disabled={loading}
-                            className="flex-1 border-slate-200 text-slate-600 hover:bg-slate-50 rounded-xl"
+                            className="flex-1 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-xl"
                         >
                             Cancel
                         </Button>

@@ -96,7 +96,7 @@ export async function generateMetadata({ params }: { params: Promise<{ code: str
     }
 
     const title = `Join "${album.title}" on KepRoop`;
-    const description = `You've been invited to join this album as ${invite.role}`;
+    const description = `You've been invited to join this album as ${invite.role}.`;
 
     return {
         title: title,

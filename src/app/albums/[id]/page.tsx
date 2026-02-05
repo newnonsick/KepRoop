@@ -344,7 +344,7 @@ export default function AlbumDetailPage({ params }: { params: Promise<{ id: stri
 
     if (loading) {
         return (
-            <div className="min-h-screen bg-gradient-to-b from-slate-50 to-blue-50/30">
+            <div className="min-h-screen bg-gradient-to-b from-slate-50 to-blue-50/30 dark:from-slate-950 dark:to-slate-900">
                 <DashboardNavbar />
                 <main className="max-w-6xl mx-auto px-6 py-10">
                     {/* Back Nav Skeleton */}
@@ -389,7 +389,7 @@ export default function AlbumDetailPage({ params }: { params: Promise<{ id: stri
 
         // Fallback to skeleton if no error but no album yet (rare race condition)
         return (
-            <div className="min-h-screen bg-gradient-to-b from-slate-50 to-blue-50/30">
+            <div className="min-h-screen bg-gradient-to-b from-slate-50 to-blue-50/30 dark:from-slate-950 dark:to-slate-900">
                 <DashboardNavbar />
                 <main className="max-w-6xl mx-auto px-6 py-10">
                     <Skeleton className="h-4 w-24 mb-8 rounded-full" />
@@ -407,7 +407,7 @@ export default function AlbumDetailPage({ params }: { params: Promise<{ id: stri
 
     return (
         <div
-            className="min-h-screen bg-gradient-to-b from-slate-50 to-blue-50/30 relative"
+            className="min-h-screen bg-gradient-to-b from-slate-50 to-blue-50/30 dark:from-slate-950 dark:to-slate-900 relative"
             onDragOver={handleDragOver}
             onDragLeave={handleDragLeave}
             onDrop={handleDrop}
@@ -415,10 +415,10 @@ export default function AlbumDetailPage({ params }: { params: Promise<{ id: stri
             {/* Drag overlay */}
             {isDragging && canEdit && (
                 <div className="fixed inset-0 bg-blue-500/10 backdrop-blur-sm z-50 flex items-center justify-center pointer-events-none">
-                    <div className="bg-white rounded-3xl p-12 shadow-2xl border-2 border-dashed border-blue-400 text-center">
+                    <div className="bg-white dark:bg-slate-800 rounded-3xl p-12 shadow-2xl border-2 border-dashed border-blue-400 dark:border-blue-500 text-center">
                         <Upload className="h-16 w-16 text-blue-500 mx-auto mb-4" />
-                        <p className="text-xl font-semibold text-slate-800">Drop photos here</p>
-                        <p className="text-slate-500 mt-1">Release to upload</p>
+                        <p className="text-xl font-semibold text-slate-800 dark:text-slate-100">Drop photos here</p>
+                        <p className="text-slate-500 dark:text-slate-400 mt-1">Release to upload</p>
                     </div>
                 </div>
             )}
@@ -429,7 +429,7 @@ export default function AlbumDetailPage({ params }: { params: Promise<{ id: stri
                 {/* Back Navigation */}
                 <Link
                     href="/dashboard"
-                    className="inline-flex items-center gap-2 text-sm text-slate-500 hover:text-blue-500 transition-colors mb-8 group"
+                    className="inline-flex items-center gap-2 text-sm text-slate-500 dark:text-slate-400 hover:text-blue-500 dark:hover:text-blue-400 transition-colors mb-8 group"
                 >
                     <ArrowLeft className="h-4 w-4 transition-transform group-hover:-translate-x-1" />
                     Back to albums
@@ -439,8 +439,8 @@ export default function AlbumDetailPage({ params }: { params: Promise<{ id: stri
                 <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 mb-10">
                     <div>
                         <div className="flex items-center gap-3 mb-2">
-                            <h1 className="text-2xl font-semibold text-slate-800">{album.title}</h1>
-                            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-blue-50 rounded-lg text-xs font-medium text-blue-600">
+                            <h1 className="text-2xl font-semibold text-slate-800 dark:text-slate-100">{album.title}</h1>
+                            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-blue-50 dark:bg-blue-900/30 rounded-lg text-xs font-medium text-blue-600 dark:text-blue-400">
                                 {album.visibility === 'private' ? (
                                     <Lock className="h-3 w-3" />
                                 ) : (
@@ -450,7 +450,7 @@ export default function AlbumDetailPage({ params }: { params: Promise<{ id: stri
                             </span>
                         </div>
                         {album.description && (
-                            <p className="text-slate-500">{album.description}</p>
+                            <p className="text-slate-500 dark:text-slate-400">{album.description}</p>
                         )}
                         <p className="text-sm text-slate-400 mt-1">
                             {imageCount} {imageCount === 1 ? "photo" : "photos"}
@@ -513,13 +513,13 @@ export default function AlbumDetailPage({ params }: { params: Promise<{ id: stri
                         {userRole && (
                             <DropdownMenu>
                                 <DropdownMenuTrigger asChild>
-                                    <Button variant="outline" size="icon" className="rounded-xl border-slate-200 text-slate-500 hover:text-slate-800">
+                                    <Button variant="outline" size="icon" className="rounded-xl border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 dark:bg-slate-800">
                                         <MoreVertical className="h-4 w-4" />
                                     </Button>
                                 </DropdownMenuTrigger>
-                                <DropdownMenuContent align="end" className="bg-white rounded-xl w-48 shadow-lg border-slate-100 p-1">
+                                <DropdownMenuContent align="end" className="bg-white dark:bg-slate-800 rounded-xl w-48 shadow-lg border-slate-100 dark:border-slate-700 p-1">
                                     {(isOwner || userRole === "editor") && (
-                                        <DropdownMenuItem onClick={() => setTrashOpen(true)} className="cursor-pointer rounded-lg px-3 py-2 text-slate-600 focus:text-slate-800 focus:bg-slate-50">
+                                        <DropdownMenuItem onClick={() => setTrashOpen(true)} className="cursor-pointer rounded-lg px-3 py-2 text-slate-600 dark:text-slate-300 focus:text-slate-800 dark:focus:text-slate-100 focus:bg-slate-50 dark:focus:bg-slate-700">
                                             <Trash2 className="mr-2 h-4 w-4" />
                                             Recycle Bin
                                         </DropdownMenuItem>
@@ -527,7 +527,7 @@ export default function AlbumDetailPage({ params }: { params: Promise<{ id: stri
 
                                     {!isOwner && (
                                         <>
-                                            {(isOwner || userRole === "editor") && <DropdownMenuSeparator className="bg-slate-100 my-1" />}
+                                            {(isOwner || userRole === "editor") && <DropdownMenuSeparator className="bg-slate-100 dark:bg-slate-700 my-1" />}
                                             <DropdownMenuItem
                                                 onClick={() => setLeaveAlbumConfirmOpen(true)}
                                                 className="text-red-500 focus:text-red-600 focus:bg-red-50 cursor-pointer rounded-lg px-3 py-2"
@@ -540,10 +540,10 @@ export default function AlbumDetailPage({ params }: { params: Promise<{ id: stri
 
                                     {isOwner && (
                                         <>
-                                            <DropdownMenuSeparator className="bg-slate-100 my-1" />
+                                            <DropdownMenuSeparator className="bg-slate-100 dark:bg-slate-700 my-1" />
                                             <DropdownMenuItem
                                                 onClick={() => document.getElementById('cover-update-input')?.click()}
-                                                className="cursor-pointer rounded-lg px-3 py-2 text-slate-600 focus:text-slate-800 focus:bg-slate-50"
+                                                className="cursor-pointer rounded-lg px-3 py-2 text-slate-600 dark:text-slate-300 focus:text-slate-800 dark:focus:text-slate-100 focus:bg-slate-50 dark:focus:bg-slate-700"
                                             >
                                                 <Camera className="mr-2 h-4 w-4" />
                                                 Change Album Cover
@@ -551,7 +551,7 @@ export default function AlbumDetailPage({ params }: { params: Promise<{ id: stri
 
                                             <DropdownMenuItem
                                                 onClick={() => setEditingAlbum(true)}
-                                                className="cursor-pointer rounded-lg px-3 py-2 text-slate-600 focus:text-slate-800 focus:bg-slate-50"
+                                                className="cursor-pointer rounded-lg px-3 py-2 text-slate-600 dark:text-slate-300 focus:text-slate-800 dark:focus:text-slate-100 focus:bg-slate-50 dark:focus:bg-slate-700"
                                             >
                                                 <MoreVertical className="mr-2 h-4 w-4" />
                                                 Edit Details
@@ -560,14 +560,14 @@ export default function AlbumDetailPage({ params }: { params: Promise<{ id: stri
                                             {album.coverImageId && (
                                                 <DropdownMenuItem
                                                     onClick={() => handleSetCover(null)}
-                                                    className="cursor-pointer rounded-lg px-3 py-2 text-slate-600 hover:text-red-500 focus:bg-slate-50"
+                                                    className="cursor-pointer rounded-lg px-3 py-2 text-slate-600 dark:text-slate-300 hover:text-red-500 focus:bg-slate-50 dark:focus:bg-slate-700"
                                                 >
                                                     <X className="mr-2 h-4 w-4 text-slate-400" />
                                                     Remove Album Cover
                                                 </DropdownMenuItem>
                                             )}
 
-                                            <DropdownMenuSeparator className="bg-slate-100 my-1" />
+                                            <DropdownMenuSeparator className="bg-slate-100 dark:bg-slate-700 my-1" />
                                             <DropdownMenuItem
                                                 onClick={() => setDeleteAlbumConfirmOpen(true)}
                                                 disabled={deletingAlbum}
@@ -607,10 +607,10 @@ export default function AlbumDetailPage({ params }: { params: Promise<{ id: stri
 
                 {/* Upload Progress */}
                 {uploading && uploadProgress.total > 0 && (
-                    <div className="mb-8 bg-white rounded-2xl p-5 border border-blue-100 shadow-sm">
+                    <div className="mb-8 bg-white dark:bg-slate-800 rounded-2xl p-5 border border-blue-100 dark:border-blue-800 shadow-sm">
                         <div className="flex items-center justify-between mb-3">
                             <div className="flex-1 min-w-0 mr-4">
-                                <p className="text-sm text-slate-600 font-medium">
+                                <p className="text-sm text-slate-600 dark:text-slate-300 font-medium">
                                     Uploading {uploadProgress.current} of {uploadProgress.total}
                                 </p>
                                 <p className="text-xs text-slate-400 truncate mt-0.5">{uploadProgress.fileName}</p>
@@ -623,12 +623,12 @@ export default function AlbumDetailPage({ params }: { params: Promise<{ id: stri
 
                 {/* Gallery - Masonry Layout with Dynamic Aspect Ratios */}
                 {imageCount === 0 ? (
-                    <div className="flex flex-col items-center justify-center py-24 bg-white rounded-3xl border border-slate-100 shadow-sm">
-                        <div className="w-20 h-20 bg-blue-50 rounded-2xl flex items-center justify-center mb-6">
+                    <div className="flex flex-col items-center justify-center py-24 bg-white dark:bg-slate-800 rounded-3xl border border-slate-100 dark:border-slate-700 shadow-sm">
+                        <div className="w-20 h-20 bg-blue-50 dark:bg-blue-900/30 rounded-2xl flex items-center justify-center mb-6">
                             <ImageIcon className="h-10 w-10 text-blue-400" strokeWidth={1.5} />
                         </div>
-                        <h3 className="text-xl font-semibold text-slate-800 mb-2">No photos yet</h3>
-                        <p className="text-slate-500 mb-8 text-center max-w-xs">
+                        <h3 className="text-xl font-semibold text-slate-800 dark:text-slate-100 mb-2">No photos yet</h3>
+                        <p className="text-slate-500 dark:text-slate-400 mb-8 text-center max-w-xs">
                             Upload your first photo to start building this album
                         </p>
                         {canEdit && (
@@ -661,7 +661,7 @@ export default function AlbumDetailPage({ params }: { params: Promise<{ id: stri
                                 <div key={image.id} className="relative group mb-4 break-inside-avoid">
                                     <button
                                         onClick={() => setSelectedImageIndex(index)}
-                                        className="w-full overflow-hidden rounded-2xl bg-slate-100 cursor-zoom-in focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 shadow-sm hover:shadow-lg transition-shadow"
+                                        className="w-full overflow-hidden rounded-2xl bg-slate-100 dark:bg-slate-700 cursor-zoom-in focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 shadow-sm hover:shadow-lg transition-shadow"
                                         disabled={isDeleting}
                                     >
                                         {image.url ? (
@@ -698,10 +698,10 @@ export default function AlbumDetailPage({ params }: { params: Promise<{ id: stri
                                             download
                                             target="_blank"
                                             rel="noopener noreferrer"
-                                            className="absolute bottom-2 right-2 p-2 bg-white/90 backdrop-blur-sm rounded-lg shadow-lg hover:bg-white transition-all opacity-0 group-hover:opacity-100"
+                                            className="absolute bottom-2 right-2 p-2 bg-white/90 dark:bg-slate-800/90 backdrop-blur-sm rounded-lg shadow-lg hover:bg-white dark:hover:bg-slate-800 transition-all opacity-0 group-hover:opacity-100"
                                             onClick={(e) => e.stopPropagation()}
                                         >
-                                            <Download className="h-4 w-4 text-slate-600" />
+                                            <Download className="h-4 w-4 text-slate-600 dark:text-slate-300" />
                                         </a>
                                     )}
 
@@ -710,11 +710,11 @@ export default function AlbumDetailPage({ params }: { params: Promise<{ id: stri
                                         <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity flex gap-1">
                                             <DropdownMenu>
                                                 <DropdownMenuTrigger asChild>
-                                                    <button className="p-2 bg-white/90 backdrop-blur-sm rounded-lg shadow-lg hover:bg-white transition-colors">
-                                                        <ImageIcon className="h-4 w-4 text-slate-600" />
+                                                    <button className="p-2 bg-white/90 dark:bg-slate-800/90 backdrop-blur-sm rounded-lg shadow-lg hover:bg-white dark:hover:bg-slate-800 transition-colors">
+                                                        <ImageIcon className="h-4 w-4 text-slate-600 dark:text-slate-300" />
                                                     </button>
                                                 </DropdownMenuTrigger>
-                                                <DropdownMenuContent align="end" className="rounded-xl">
+                                                <DropdownMenuContent align="end" className="rounded-xl bg-white dark:bg-slate-800 border-slate-100 dark:border-slate-700">
                                                     <DropdownMenuItem onClick={() => handleSetCover(image.id)} className="cursor-pointer">
                                                         <Star className="mr-2 h-4 w-4" />
                                                         Set as cover
@@ -742,8 +742,8 @@ export default function AlbumDetailPage({ params }: { params: Promise<{ id: stri
                         {/* Add Photo Placeholder */}
                         {canEdit && (
                             <label htmlFor="upload-grid" className="cursor-pointer mb-4 break-inside-avoid block">
-                                <div className="aspect-square rounded-2xl border-2 border-dashed border-blue-200 hover:border-blue-400 bg-white hover:bg-blue-50/50 transition-all flex flex-col items-center justify-center gap-2 group">
-                                    <div className="w-12 h-12 bg-blue-100 group-hover:bg-blue-200 rounded-xl flex items-center justify-center transition-colors">
+                                <div className="aspect-square rounded-2xl border-2 border-dashed border-blue-200 dark:border-blue-700 hover:border-blue-400 dark:hover:border-blue-500 bg-white dark:bg-slate-800 hover:bg-blue-50/50 dark:hover:bg-blue-900/20 transition-all flex flex-col items-center justify-center gap-2 group">
+                                    <div className="w-12 h-12 bg-blue-100 dark:bg-blue-900/50 group-hover:bg-blue-200 dark:group-hover:bg-blue-900 rounded-xl flex items-center justify-center transition-colors">
                                         <Plus className="h-6 w-6 text-blue-500" />
                                     </div>
                                     <span className="text-xs font-medium text-blue-500">Add photo</span>

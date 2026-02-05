@@ -53,21 +53,21 @@ export function ConfirmDialog({
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent className="sm:max-w-[440px] bg-white rounded-[2rem] border-slate-100 shadow-2xl p-0 gap-0 overflow-hidden">
+            <DialogContent className="sm:max-w-[440px] bg-white dark:bg-slate-900 rounded-[2rem] border-slate-100 dark:border-slate-700 shadow-2xl p-0 gap-0 overflow-hidden">
                 <div className="p-8">
                     <div className="flex flex-col items-center text-center">
                         <div className={cn(
                             "w-16 h-16 rounded-2xl flex items-center justify-center mb-6 transition-all duration-500 scale-100",
-                            variant === "destructive" ? "bg-red-50 text-red-500" : "bg-blue-50 text-blue-500"
+                            variant === "destructive" ? "bg-red-50 dark:bg-red-900/30 text-red-500" : "bg-blue-50 dark:bg-blue-900/30 text-blue-500"
                         )}>
                             {icon || <AlertTriangle className="h-8 w-8" strokeWidth={1.5} />}
                         </div>
 
                         <DialogHeader>
-                            <DialogTitle className="text-2xl font-bold text-slate-800 tracking-tight">
+                            <DialogTitle className="text-2xl font-bold text-slate-800 dark:text-slate-100 tracking-tight">
                                 {title}
                             </DialogTitle>
-                            <DialogDescription className="text-slate-500 mt-3 text-base leading-relaxed px-2">
+                            <DialogDescription className="text-slate-500 dark:text-slate-400 mt-3 text-base leading-relaxed px-2">
                                 {description}
                             </DialogDescription>
                         </DialogHeader>
@@ -77,7 +77,7 @@ export function ConfirmDialog({
                         <Button
                             variant="outline"
                             onClick={() => onOpenChange(false)}
-                            className="flex-1 h-12 rounded-2xl border-slate-200 text-slate-600 hover:bg-slate-50 order-2 sm:order-1 font-medium"
+                            className="flex-1 h-12 rounded-2xl border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 order-2 sm:order-1 font-medium"
                             disabled={isLoading}
                         >
                             {cancelText}
