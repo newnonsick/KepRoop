@@ -23,8 +23,15 @@ declare global {
 
 export default function AuthLanding({ googleClientId }: AuthLandingProps) {
     const router = useRouter();
-    const { mutate } = useAuth();
+    const { user, isLoading, mutate } = useAuth();
     const googleButtonRef = useRef<HTMLDivElement>(null);
+
+    // Redirect if already logged in
+    useEffect(() => {
+        if (!isLoading && user) {
+            router.push("/dashboard");
+        }
+    }, [user, isLoading, router]);
 
     const [mode, setMode] = useState<"login" | "register">("login");
     const [loading, setLoading] = useState(false);
@@ -152,6 +159,14 @@ export default function AuthLanding({ googleClientId }: AuthLandingProps) {
 
     const allValid = Object.values(passValidities).every(Boolean);
     const passwordsMatch = password === confirmPassword && confirmPassword.length > 0;
+
+    if (isLoading) {
+        return (
+            <div className="min-h-screen flex items-center justify-center bg-white">
+                <Loader2 className="h-8 w-8 animate-spin text-blue-500" />
+            </div>
+        );
+    }
 
     return (
         <div className="min-h-screen flex">
