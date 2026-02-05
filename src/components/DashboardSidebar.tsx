@@ -49,7 +49,7 @@ export function DashboardSidebar({
                             <div className="flex items-center justify-center w-6 h-6 rounded-lg bg-blue-50 group-hover:bg-blue-100 transition-colors">
                                 <Plus className="h-4 w-4 text-blue-500" />
                             </div>
-                            <span className="font-medium">New album</span>
+                            <span className="font-medium">Create album</span>
                         </Button>
                     }
                 />

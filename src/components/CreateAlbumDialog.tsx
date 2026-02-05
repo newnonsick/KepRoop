@@ -160,7 +160,7 @@ export function CreateAlbumDialog({ trigger, onSuccess }: CreateAlbumDialogProps
             </DialogTrigger>
             <DialogContent className="sm:max-w-md rounded-2xl border-slate-100 shadow-xl bg-white">
                 <DialogHeader>
-                    <DialogTitle className="text-xl text-slate-800">New album</DialogTitle>
+                    <DialogTitle className="text-xl text-slate-800">Create album</DialogTitle>
                     <DialogDescription className="text-slate-500">
                         Create a new photo album
                     </DialogDescription>
