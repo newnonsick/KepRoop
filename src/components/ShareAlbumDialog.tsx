@@ -333,7 +333,7 @@ export function ShareAlbumDialog({ albumId, albumTitle, albumVisibility = "priva
                                                         {member.user.name} {member.userId === currentUserId && "(You)"}
                                                     </p>
                                                     {member.role === "owner" && (
-                                                        <Badge variant="outline" className="bg-amber-50 text-amber-600 border-amber-100 text-[9px] h-3.5 px-1 font-bold uppercase tracking-tight">
+                                                        <Badge variant="outline" className="bg-amber-50 text-amber-600 border-amber-100 text-[9px] h-3.5 px-1 font-bold uppercase tracking-tight shrink-0 whitespace-nowrap">
                                                             {isOriginalOwner(member.userId) ? "Owner" : "Joint Owner"}
                                                         </Badge>
                                                     )}
