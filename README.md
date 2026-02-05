@@ -1,103 +1,122 @@
-# KepRoop - Secure Photo Albums
+# KepRoop (เก็บรูป)
 
-KepRoop is a modern, secure photo album management application designed for simplicity and privacy. It allows users to create albums, manage photos, and share them with granular permissions (Viewer/Editor) via secure invite links.
+**KepRoop** is a modern, self-hosted photo album management and sharing platform. Built with performance and privacy in mind, it allows users to organize photos into albums, control visibility, and collaborate with friends and family through granular permission settings.
 
 ![KepRoop Logo](public/logo.png)
 
-## ✨ Features
+## 🚀 Features
 
-### 📸 Album Management
-- **Create & Organize**: specialized albums with custom cover images.
-- **Privacy Controls**: Set albums as **Public** or **Private**.
-- **Collage Covers**: Dynamic 2x2 collage previews for albums.
-- **Search & Filter**: Unified search bar with visibility and date range filters.
+* **📸 Smart Album Management**: Create and organize albums with rich descriptions and custom cover images.
+* **🛡️ Privacy First**: Toggle albums between **Public** and **Private** visibility.
+* **🤝 Collaborative Sharing**:
+* Invite members via secure links.
+* **Role-Based Access Control (RBAC)**: Assign roles like `Viewer`, `Editor`, or `Owner`.
+* **Advanced Invites**: Set expiration dates or usage limits on invite links.
 
-### 👥 Collaboration & Sharing
-- **Role-Based Access**:
-    - **Owner**: Full control.
-    - **Editor**: Can upload and manage photos.
-    - **Viewer**: Read-only access.
-- **Smart Invites**:
-    - Secure invite links with role-specific tokens.
-    - **Auto-Upgrade**: Viewers using Editor links are automatically upgraded.
-    - **Downgrade Protection**: Existing Editors using Viewer links retain their privileges.
-- **Guest Access**: Secure cookie-based access for non-authenticated guests via invite links.
 
-### 🛡️ Authentication & Security
-- **Secure Login**: Email/Password and Google OAuth.
-- **Session Management**: "Remember Me" functionality for 30-day persistent sessions.
-- **Token-Based Auth**: Secure Access and Refresh token rotation with httpOnly cookies.
+* **☁️ Scalable Storage**: Built-in support for S3-compatible storage (AWS S3, MinIO, Cloudflare R2).
+* **🔐 Secure Authentication**:
+* Email/Password authentication using `bcryptjs` and `jose` (JWT).
+* Google OAuth integration.
+* Secure session management with refresh tokens.
 
-### 🎨 Modern UI/UX
-- **Premium Aesthetic**: Clean, minimal design using `shadcn/ui` components.
-- **Responsive**: Fully optimized mobile and desktop experiences.
-- **Interactive Feedback**: Custom toasts (`sonner`) and themed confirmation dialogs.
+
+* **🗑️ Trash & Recovery**: Soft-delete system allows you to recover accidentally deleted albums or images.
+* **🎨 Modern UI**: Fully responsive interface built with **Shadcn UI** and **Tailwind CSS**.
 
 ## 🛠️ Tech Stack
 
-- **Framework**: [Next.js 16](https://nextjs.org/) (App Router, Turbopack)
-- **Language**: TypeScript
-- **Styling**: Tailwind CSS v4, `shadcn/ui`
-- **Database**: PostgreSQL (via Neon/Supabase)
-- **ORM**: Drizzle ORM
-- **Storage**: AWS S3 (for image storage)
-- **Authentication**: Custom JWT (JOSE) + Google OAuth
+* **Framework**: [Next.js 16](https://nextjs.org/) (App Router)
+* **Language**: [TypeScript](https://www.typescriptlang.org/)
+* **Database**: [PostgreSQL](https://www.postgresql.org/)
+* **ORM**: [Drizzle ORM](https://orm.drizzle.team/)
+* **UI Components**: [Shadcn UI](https://ui.shadcn.com/)
+* **Styling**: [Tailwind CSS](https://tailwindcss.com/)
+* **Storage**: AWS S3 SDK (Compatible with S3 providers)
+* **Validation**: Zod & React Hook Form
 
-## 🚀 Getting Started
+## ⚙️ Installation & Setup
 
 ### Prerequisites
-- Node.js 18+
-- PostgreSQL Database
-- AWS S3 Bucket
 
-### Installation
+* Node.js (v18+ recommended)
+* PostgreSQL Database
+* An S3-compatible storage bucket (AWS, MinIO, etc.)
 
-1. Clone the repository:
-   ```bash
-   git clone https://github.com/newnonsick/KepRoop.git
-   cd KepRoop
-   ```
+### 1. Clone the repository
 
-2. Install dependencies:
-   ```bash
-   npm install
-   ```
+```bash
+git clone https://github.com/yourusername/keproop.git
+cd keproop
+```
 
-3. Set up environment variables:
-   Create a `.env` file in the root directory:
-   ```env
-   DATABASE_URL=postgresql://...
-   JWT_SECRET=your_jwt_secret
-   REFRESH_TOKEN_SECRET=your_refresh_secret
-   
-   # AWS S3
-   AWS_REGION=us-east-1
-   AWS_ACCESS_KEY_ID=...
-   AWS_SECRET_ACCESS_KEY=...
-   S3_BUCKET_NAME=...
-   
-   # Google OAuth
-   GOOGLE_CLIENT_ID=...
-   GOOGLE_CLIENT_SECRET=...
-   GOOGLE_REDIRECT_URI=...
-   ```
+### 2. Install dependencies
 
-4. Run database migrations:
-   ```bash
-   npm run db:push
-   ```
+```bash
+npm install
+# or
+yarn install
+```
 
-5. Start the development server:
-   ```bash
-   npm run dev
-   ```
+### 3. Environment Configuration
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Create a `.env` file in the root directory and configure the following variables:
 
-## 🤝 Contributing
+```env
+# Database
+DATABASE_URL="postgresql://user:password@localhost:5432/keproop"
 
-Contributions are welcome! Please feel free to submit a Pull Request.
+# Storage (AWS S3 or Compatible)
+AWS_REGION="us-east-1"
+AWS_S3_ENDPOINT="https://s3.amazonaws.com" # or your custom endpoint
+AWS_ACCESS_KEY_ID="your-access-key"
+AWS_SECRET_ACCESS_KEY="your-secret-key"
+AWS_S3_BUCKET_NAME="your-bucket-name"
+
+# Authentication
+# Generate a secret using: openssl rand -base64 32
+JWT_SECRET="your-secure-jwt-secret"
+REFRESH_TOKEN_SECRET="your-secure-refresh-token-secret"
+
+# Google OAuth (Optional)
+GOOGLE_CLIENT_ID="your-google-client-id"
+GOOGLE_CLIENT_SECRET="your-google-client-secret"
+GOOGLE_REDIRECT_URI="http://localhost:3000/auth/google/callback"
+```
+
+### 4. Database Setup
+
+Push the database schema to your PostgreSQL instance:
+
+```bash
+npm run drizzle-kit push
+```
+
+### 5. Run the application
+
+```bash
+npm run dev
+```
+
+The application will be available at `http://localhost:3000`.
+
+## 📜 Scripts
+
+* `npm run dev`: Starts the development server.
+* `npm run build`: Builds the application for production.
+* `npm start`: Runs the built production application.
+* `npm run lint`: Runs ESLint for code quality checks.
+
+## 🗄️ Database Schema
+
+KepRoop uses a relational schema designed for scalability:
+
+* **Users**: Stores profile info and authentication credentials.
+* **Albums**: The core organizational unit.
+* **Images**: Metadata for files stored in S3.
+* **AlbumMembers**: Join table handling user permissions per album.
+* **AlbumInvites**: Manages secure, trackable invite tokens.
 
 ## 📄 License
 
-This project is licensed under the [MIT License](LICENSE).
+This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
