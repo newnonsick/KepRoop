@@ -9,6 +9,7 @@ interface User {
     name: string;
     email: string;
     avatarUrl?: string;
+    hasPassword?: boolean;
 }
 
 interface AuthContextType {

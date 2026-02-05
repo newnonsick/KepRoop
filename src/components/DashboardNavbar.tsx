@@ -16,7 +16,9 @@ import {
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
+import { SettingsDialog } from "@/components/SettingsDialog";
 import { toast } from "sonner";
+import { Settings } from "lucide-react";
 
 interface UserData {
     id: string;
@@ -32,6 +34,7 @@ export function DashboardNavbar() {
     const { user, isLoading: loading, mutate } = useAuth();
     const [loggingOut, setLoggingOut] = useState(false);
     const [confirmLogoutOpen, setConfirmLogoutOpen] = useState(false);
+    const [settingsOpen, setSettingsOpen] = useState(false);
 
     const handleLogout = async () => {
         setLoggingOut(true);
@@ -80,11 +83,19 @@ export function DashboardNavbar() {
                                 <ChevronDown className="h-4 w-4 text-slate-400" />
                             </button>
                         </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end" className="w-56 rounded-xl shadow-lg shadow-slate-200/50 border-slate-100">
+                        <DropdownMenuContent align="end" className="bg-white w-56 rounded-xl shadow-lg shadow-slate-200/50 border-slate-100">
                             <div className="px-3 py-3">
                                 <p className="text-sm font-medium text-slate-800">{user.name}</p>
                                 <p className="text-xs text-slate-500 truncate">{user.email}</p>
                             </div>
+                            <DropdownMenuSeparator className="bg-slate-100" />
+                            <DropdownMenuItem
+                                onClick={() => setSettingsOpen(true)}
+                                className="text-slate-700 focus:text-slate-800 focus:bg-slate-50 rounded-lg mx-1 cursor-pointer"
+                            >
+                                <Settings className="mr-2 h-4 w-4" />
+                                Settings
+                            </DropdownMenuItem>
                             <DropdownMenuSeparator className="bg-slate-100" />
                             <DropdownMenuItem
                                 onClick={() => setConfirmLogoutOpen(true)}
@@ -113,6 +124,7 @@ export function DashboardNavbar() {
                 onConfirm={handleLogout}
                 confirmText="Sign out"
             />
+            <SettingsDialog open={settingsOpen} onOpenChange={setSettingsOpen} />
         </header>
     );
 }

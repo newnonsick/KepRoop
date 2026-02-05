@@ -104,15 +104,15 @@ export default function AlbumDetailPage({ params }: { params: Promise<{ id: stri
             });
 
             if (res.ok) {
-                toast.success("You left the gallery");
+                toast.success("You left the album");
                 router.push("/dashboard");
                 router.refresh();
             } else {
                 const data = await res.json();
-                toast.error(data.error || "Failed to leave gallery");
+                toast.error(data.error || "Failed to leave album");
             }
         } catch (err) {
-            toast.error("Error leaving gallery");
+            toast.error("Error leaving album");
         }
     }
 
@@ -450,7 +450,7 @@ export default function AlbumDetailPage({ params }: { params: Promise<{ id: stri
                                                 className="text-red-500 focus:text-red-600 focus:bg-red-50 cursor-pointer rounded-lg px-3 py-2"
                                             >
                                                 <LogOut className="mr-2 h-4 w-4" />
-                                                Leave Gallery
+                                                Leave Album
                                             </DropdownMenuItem>
                                         </>
                                     )}
@@ -708,10 +708,10 @@ export default function AlbumDetailPage({ params }: { params: Promise<{ id: stri
             <ConfirmDialog
                 open={leaveAlbumConfirmOpen}
                 onOpenChange={setLeaveAlbumConfirmOpen}
-                title="Leave Gallery?"
-                description="Are you sure you want to leave this gallery? You will lose access until you are invited back by the owner."
+                title="Leave Album?"
+                description="Are you sure you want to leave this album? You will lose access until you are invited back by the owner."
                 onConfirm={handleLeaveAlbum}
-                confirmText="Leave Gallery"
+                confirmText="Leave Album"
             />
 
             <ConfirmDialog

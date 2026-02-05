@@ -231,7 +231,7 @@ export function ShareAlbumDialog({ albumId, albumTitle, albumVisibility = "priva
 
             if (res.ok) {
                 if (isSelf) {
-                    toast.success("You left the gallery");
+                    toast.success("You left the album");
                     setOpen(false);
                     router.push("/dashboard");
                     router.refresh();
@@ -274,7 +274,7 @@ export function ShareAlbumDialog({ albumId, albumTitle, albumVisibility = "priva
             <DialogContent className="sm:max-w-md rounded-3xl border-slate-100 shadow-2xl bg-white p-0 overflow-hidden flex flex-col max-h-[90vh]">
                 <div className="p-6 pb-0">
                     <DialogHeader>
-                        <DialogTitle className="text-xl text-slate-800">Gallery Access</DialogTitle>
+                        <DialogTitle className="text-xl text-slate-800">Album Access</DialogTitle>
                         <DialogDescription className="text-slate-500">
                             Manage members and share links for &quot;{albumTitle}&quot;
                         </DialogDescription>
