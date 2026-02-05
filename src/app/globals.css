@@ -26,8 +26,8 @@
   --secondary: 210 100% 97%;
   --secondary-foreground: 210 70% 35%;
 
-  /* Muted: soft blue-gray */
-  --muted: 210 30% 96%;
+  /* Muted: soft blue-gray - Darkened for visibility of skeletons */
+  --muted: 210 20% 90%;
   --muted-foreground: 215 15% 50%;
 
   /* Accent: subtle blue highlight */

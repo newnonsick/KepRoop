@@ -208,7 +208,7 @@ export default function DashboardPage() {
                                 <div>
                                     <h1 className="text-2xl font-semibold text-slate-800">{getPageTitle()}</h1>
                                     <p className="text-sm text-slate-500 mt-1">
-                                        {loading ? "Loading albums..." : (
+                                        {(loading || (!loading && data?.albums?.length && albums.length === 0)) ? "Loading albums..." : (
                                             filteredAlbums.length === 0
                                                 ? (searchQuery ? "No matches found" : "No albums found")
                                                 : `${filteredAlbums.length} album${filteredAlbums.length === 1 ? "" : "s"}`
@@ -580,7 +580,7 @@ export default function DashboardPage() {
 
                         {/* Album Grid */}
                         {
-                            loading ? (
+                            (loading || (!loading && data?.albums?.length && albums.length === 0)) ? (
                                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
                                     {[...Array(6)].map((_, i) => (
                                         <div key={i} className="bg-white rounded-3xl overflow-hidden shadow-sm border border-slate-100">

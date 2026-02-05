@@ -347,14 +347,33 @@ export default function AlbumDetailPage({ params }: { params: Promise<{ id: stri
             <div className="min-h-screen bg-gradient-to-b from-slate-50 to-blue-50/30">
                 <DashboardNavbar />
                 <main className="max-w-6xl mx-auto px-6 py-10">
-                    <Skeleton className="h-4 w-32 mb-8" />
-                    <div className="space-y-2 mb-10">
-                        <Skeleton className="h-8 w-64" />
-                        <Skeleton className="h-4 w-96" />
+                    {/* Back Nav Skeleton */}
+                    <Skeleton className="h-4 w-24 mb-8 rounded-full" />
+
+                    {/* Header Skeleton */}
+                    <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 mb-10">
+                        <div className="space-y-3 w-full max-w-lg">
+                            <div className="flex items-center gap-3">
+                                <Skeleton className="h-8 w-64 rounded-xl" />
+                                <Skeleton className="h-6 w-20 rounded-lg" />
+                            </div>
+                            <Skeleton className="h-4 w-96 max-w-full rounded-lg" />
+                            <Skeleton className="h-4 w-32 rounded-lg" />
+                        </div>
+                        <div className="flex gap-3">
+                            <Skeleton className="h-10 w-24 rounded-xl" />
+                            <Skeleton className="h-10 w-10 rounded-xl" />
+                        </div>
                     </div>
-                    <div className="columns-2 sm:columns-3 md:columns-4 gap-4">
-                        {[...Array(8)].map((_, i) => (
-                            <Skeleton key={i} className="mb-4 rounded-2xl" style={{ height: `${150 + Math.random() * 150}px` }} />
+
+                    {/* Grid Skeleton */}
+                    <div className="columns-2 sm:columns-3 md:columns-4 lg:columns-5 gap-4">
+                        {[...Array(12)].map((_, i) => (
+                            <Skeleton
+                                key={i}
+                                className="mb-4 rounded-2xl w-full"
+                                style={{ height: `${150 + Math.random() * 200}px` }}
+                            />
                         ))}
                     </div>
                 </main>
@@ -362,7 +381,27 @@ export default function AlbumDetailPage({ params }: { params: Promise<{ id: stri
         );
     }
 
-    if (!album) return null;
+    if (!album) {
+        // If we are here, it means loading is false but data is missing.
+        // It might be a 404 or error state handled by the effect, or a brief gap.
+        // Render skeleton to avoid flash, or a "Not Found" message if error exists.
+        if (albumError) return null; // Let the effect handle it or render error page
+
+        // Fallback to skeleton if no error but no album yet (rare race condition)
+        return (
+            <div className="min-h-screen bg-gradient-to-b from-slate-50 to-blue-50/30">
+                <DashboardNavbar />
+                <main className="max-w-6xl mx-auto px-6 py-10">
+                    <Skeleton className="h-4 w-24 mb-8 rounded-full" />
+                    <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 mb-10">
+                        <div className="space-y-3 w-full max-w-lg">
+                            <Skeleton className="h-8 w-64 rounded-xl" />
+                        </div>
+                    </div>
+                </main>
+            </div>
+        );
+    }
 
     const imageCount = images.length || 0;
 
