@@ -49,7 +49,9 @@ function buildAlbumsUrl(params: {
     sortBy: string;
     sortDir: string;
 }) {
-    const url = new URL("/api/albums", window.location.origin);
+    // Use a dummy base for URL construction to avoid 'window is not defined' on server
+    const url = new URL("/api/albums", "http://base.url");
+
     if (params.cursor) url.searchParams.set("cursor", params.cursor);
     if (params.filter !== "all") url.searchParams.set("filter", params.filter);
     if (params.visibility !== "all") url.searchParams.set("visibility", params.visibility);
@@ -58,7 +60,9 @@ function buildAlbumsUrl(params: {
     if (params.search) url.searchParams.set("search", params.search);
     if (params.sortBy !== "joinedAt") url.searchParams.set("sortBy", params.sortBy);
     if (params.sortDir !== "desc") url.searchParams.set("sortDir", params.sortDir);
-    return url.toString();
+
+    // Return path + query string (relative URL)
+    return url.pathname + url.search;
 }
 
 export default function DashboardPage() {
