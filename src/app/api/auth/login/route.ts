@@ -32,9 +32,9 @@ export async function POST(request: Request) {
         }
 
         // Determine expiration based on remember me
-        const refreshDuration = remember ? "30d" : "1d";
+        const refreshDuration = remember ? "90d" : "1d";
         const refreshDate = remember
-            ? new Date(Date.now() + 1000 * 60 * 60 * 24 * 30) // 30 days
+            ? new Date(Date.now() + 1000 * 60 * 60 * 24 * 90) // 90 days
             : new Date(Date.now() + 1000 * 60 * 60 * 24); // 1 day
 
         // Generate tokens
@@ -58,7 +58,7 @@ export async function POST(request: Request) {
             httpOnly: true,
             secure: process.env.NODE_ENV === "production",
             sameSite: "lax",
-            maxAge: 60 * 15, // 15 minutes
+            maxAge: 60 * 60, // 1 hour
             path: "/",
         });
 
@@ -66,7 +66,7 @@ export async function POST(request: Request) {
             httpOnly: true,
             secure: process.env.NODE_ENV === "production",
             sameSite: "lax",
-            maxAge: remember ? 60 * 60 * 24 * 30 : 60 * 60 * 24, // 30 days or 1 day
+            maxAge: remember ? 60 * 60 * 24 * 90 : 60 * 60 * 24, // 90 days or 1 day
             path: "/",
         });
 

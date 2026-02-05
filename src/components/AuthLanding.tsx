@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import Script from "next/script";
+import { useAuth } from "@/components/providers/AuthProvider";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -22,6 +23,7 @@ declare global {
 
 export default function AuthLanding({ googleClientId }: AuthLandingProps) {
     const router = useRouter();
+    const { mutate } = useAuth();
     const googleButtonRef = useRef<HTMLDivElement>(null);
 
     const [mode, setMode] = useState<"login" | "register">("login");
@@ -77,6 +79,7 @@ export default function AuthLanding({ googleClientId }: AuthLandingProps) {
             });
 
             if (res.ok) {
+                await mutate(); // Refresh auth state
                 router.push("/dashboard");
             } else {
                 const data = await res.json();
@@ -130,6 +133,7 @@ export default function AuthLanding({ googleClientId }: AuthLandingProps) {
             });
 
             if (res.ok) {
+                await mutate(); // Refresh auth state
                 router.push("/dashboard");
             } else {
                 const data = await res.json();

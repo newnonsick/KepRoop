@@ -66,12 +66,41 @@ export default function AlbumDetailPage({ params }: { params: Promise<{ id: stri
     const [leaveAlbumConfirmOpen, setLeaveAlbumConfirmOpen] = useState(false);
     const [deleteImageConfirmId, setDeleteImageConfirmId] = useState<string | null>(null);
 
+    // Photo Navigation State
+    const [selectedImageIndex, setSelectedImageIndex] = useState<number | null>(null);
+
     const album = albumData?.album || null;
     const userRole = albumData?.userRole || null;
     const loading = albumLoading || authLoading;
 
     const canEdit = userRole === "owner" || userRole === "editor";
     const isOwner = userRole === "owner";
+    const images = album?.images || [];
+
+    // Navigation Handlers
+    const handleNext = () => {
+        if (selectedImageIndex === null) return;
+        setSelectedImageIndex((prev) => (prev === null || prev === images.length - 1 ? 0 : prev + 1));
+    };
+
+    const handlePrev = () => {
+        if (selectedImageIndex === null) return;
+        setSelectedImageIndex((prev) => (prev === null || prev === 0 ? images.length - 1 : prev - 1));
+    };
+
+    // Keyboard Navigation
+    useEffect(() => {
+        if (selectedImageIndex === null) return;
+
+        const handleKeyDown = (e: KeyboardEvent) => {
+            if (e.key === "ArrowRight") handleNext();
+            if (e.key === "ArrowLeft") handlePrev();
+        };
+
+        window.addEventListener("keydown", handleKeyDown);
+        return () => window.removeEventListener("keydown", handleKeyDown);
+    }, [selectedImageIndex, images.length]);
+
 
     async function handleDeleteAlbum() {
         setDeletingAlbum(true);
@@ -322,7 +351,7 @@ export default function AlbumDetailPage({ params }: { params: Promise<{ id: stri
 
     if (!album) return null;
 
-    const imageCount = album.images?.length || 0;
+    const imageCount = images.length || 0;
 
     return (
         <div
@@ -428,8 +457,8 @@ export default function AlbumDetailPage({ params }: { params: Promise<{ id: stri
                             disabled={uploading || !canEdit}
                         />
 
-                        {/* Kebab Menu - Owner or Editor */}
-                        {(isOwner || userRole === "editor") && (
+                        {/* Kebab Menu - Owner, Editor, or Viewer */}
+                        {userRole && (
                             <DropdownMenu>
                                 <DropdownMenuTrigger asChild>
                                     <Button variant="outline" size="icon" className="rounded-xl border-slate-200 text-slate-500 hover:text-slate-800">
@@ -437,14 +466,16 @@ export default function AlbumDetailPage({ params }: { params: Promise<{ id: stri
                                     </Button>
                                 </DropdownMenuTrigger>
                                 <DropdownMenuContent align="end" className="bg-white rounded-xl w-48 shadow-lg border-slate-100 p-1">
-                                    <DropdownMenuItem onClick={() => setTrashOpen(true)} className="cursor-pointer rounded-lg px-3 py-2 text-slate-600 focus:text-slate-800 focus:bg-slate-50">
-                                        <Trash2 className="mr-2 h-4 w-4" />
-                                        Recycle Bin
-                                    </DropdownMenuItem>
+                                    {(isOwner || userRole === "editor") && (
+                                        <DropdownMenuItem onClick={() => setTrashOpen(true)} className="cursor-pointer rounded-lg px-3 py-2 text-slate-600 focus:text-slate-800 focus:bg-slate-50">
+                                            <Trash2 className="mr-2 h-4 w-4" />
+                                            Recycle Bin
+                                        </DropdownMenuItem>
+                                    )}
 
                                     {!isOwner && (
                                         <>
-                                            <DropdownMenuSeparator className="bg-slate-100 my-1" />
+                                            {(isOwner || userRole === "editor") && <DropdownMenuSeparator className="bg-slate-100 my-1" />}
                                             <DropdownMenuItem
                                                 onClick={() => setLeaveAlbumConfirmOpen(true)}
                                                 className="text-red-500 focus:text-red-600 focus:bg-red-50 cursor-pointer rounded-lg px-3 py-2"
@@ -570,49 +601,35 @@ export default function AlbumDetailPage({ params }: { params: Promise<{ id: stri
                     </div>
                 ) : (
                     <div className="columns-2 sm:columns-3 md:columns-4 lg:columns-5 gap-4 [column-fill:_balance]">
-                        {album.images?.map((image: Image) => {
+                        {images.map((image: Image, index: number) => {
                             const isCover = album.coverImageId === image.id;
                             const isDeleting = deletingImageId === image.id;
 
                             return (
                                 <div key={image.id} className="relative group mb-4 break-inside-avoid">
-                                    <Dialog>
-                                        <DialogTrigger asChild>
-                                            <button
-                                                className="w-full overflow-hidden rounded-2xl bg-slate-100 cursor-zoom-in focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 shadow-sm hover:shadow-lg transition-shadow"
-                                                disabled={isDeleting}
-                                            >
-                                                {image.url ? (
-                                                    <img
-                                                        src={image.url}
-                                                        alt=""
-                                                        className="w-full h-auto object-cover transition-transform duration-300 group-hover:scale-[1.02]"
-                                                        style={{
-                                                            aspectRatio: image.width && image.height
-                                                                ? `${image.width}/${image.height}`
-                                                                : 'auto'
-                                                        }}
-                                                        loading="lazy"
-                                                    />
-                                                ) : (
-                                                    <div className="aspect-square flex items-center justify-center">
-                                                        <ImageIcon className="h-8 w-8 text-blue-200" strokeWidth={1.5} />
-                                                    </div>
-                                                )}
-                                            </button>
-                                        </DialogTrigger>
-                                        <DialogContent className="max-w-5xl p-0 border-0 bg-slate-900 shadow-2xl overflow-hidden rounded-2xl">
-                                            <div className="flex items-center justify-center min-h-[60vh] max-h-[85vh] p-4">
-                                                {image.url && (
-                                                    <img
-                                                        src={image.url}
-                                                        alt=""
-                                                        className="max-h-full max-w-full object-contain rounded-lg"
-                                                    />
-                                                )}
+                                    <button
+                                        onClick={() => setSelectedImageIndex(index)}
+                                        className="w-full overflow-hidden rounded-2xl bg-slate-100 cursor-zoom-in focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 shadow-sm hover:shadow-lg transition-shadow"
+                                        disabled={isDeleting}
+                                    >
+                                        {image.url ? (
+                                            <img
+                                                src={image.url}
+                                                alt=""
+                                                className="w-full h-auto object-cover transition-transform duration-300 group-hover:scale-[1.02]"
+                                                style={{
+                                                    aspectRatio: image.width && image.height
+                                                        ? `${image.width}/${image.height}`
+                                                        : 'auto'
+                                                }}
+                                                loading="lazy"
+                                            />
+                                        ) : (
+                                            <div className="aspect-square flex items-center justify-center">
+                                                <ImageIcon className="h-8 w-8 text-blue-200" strokeWidth={1.5} />
                                             </div>
-                                        </DialogContent>
-                                    </Dialog>
+                                        )}
+                                    </button>
 
                                     {/* Cover indicator */}
                                     {isCover && (
@@ -693,6 +710,56 @@ export default function AlbumDetailPage({ params }: { params: Promise<{ id: stri
                     </div>
                 )}
             </main>
+
+            {/* Centralized Photo Viewer Dialog */}
+            <Dialog open={selectedImageIndex !== null} onOpenChange={(open) => !open && setSelectedImageIndex(null)}>
+                <DialogContent className="max-w-7xl p-0 border-0 bg-transparent shadow-none focus:outline-none h-screen w-screen flex flex-col justify-center pointer-events-none">
+                    <div className="relative w-full h-full flex items-center justify-center pointer-events-auto">
+                        {/* Close Button */}
+                        <button
+                            onClick={() => setSelectedImageIndex(null)}
+                            className="absolute right-4 top-4 z-50 p-3 bg-black/20 hover:bg-black/40 backdrop-blur-md rounded-full text-white transition-all shadow-lg border border-white/20 group hover:rotate-90"
+                            aria-label="Close viewer"
+                        >
+                            <X className="h-6 w-6" />
+                        </button>
+
+                        {/* Previous Button */}
+                        <button
+                            onClick={(e) => { e.stopPropagation(); handlePrev(); }}
+                            className="absolute left-4 top-1/2 -translate-y-1/2 z-50 p-4 bg-black/20 hover:bg-black/40 backdrop-blur-md rounded-full text-white transition-all shadow-lg border border-white/20 group"
+                            aria-label="Previous photo"
+                        >
+                            <ArrowLeft className="h-8 w-8 group-hover:scale-110 transition-transform" />
+                        </button>
+
+                        {/* Next Button */}
+                        <button
+                            onClick={(e) => { e.stopPropagation(); handleNext(); }}
+                            className="absolute right-4 top-1/2 -translate-y-1/2 z-50 p-4 bg-black/20 hover:bg-black/40 backdrop-blur-md rounded-full text-white transition-all shadow-lg border border-white/20 group"
+                            aria-label="Next photo"
+                        >
+                            <ArrowLeft className="h-8 w-8 rotate-180 group-hover:scale-110 transition-transform" />
+                        </button>
+
+                        {/* Image Display */}
+                        {selectedImageIndex !== null && images[selectedImageIndex] && (
+                            <div className="relative w-full h-full flex items-center justify-center p-4 md:p-12">
+                                <img
+                                    src={images[selectedImageIndex].url}
+                                    alt=""
+                                    className="max-h-full max-w-full object-contain rounded-lg shadow-2xl"
+                                />
+                                {images[selectedImageIndex].createdAt && (
+                                    <div className="absolute bottom-4 left-1/2 -translate-x-1/2 px-4 py-2 bg-black/50 backdrop-blur-md rounded-full text-white text-sm">
+                                        {selectedImageIndex + 1} / {images.length}
+                                    </div>
+                                )}
+                            </div>
+                        )}
+                    </div>
+                </DialogContent>
+            </Dialog>
 
             {/* Confirmation Dialogs */}
             <ConfirmDialog

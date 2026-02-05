@@ -14,11 +14,11 @@ export async function createAccessToken(payload: TokenPayload): Promise<string> 
     return new SignJWT({ ...payload })
         .setProtectedHeader({ alg: ALG })
         .setIssuedAt()
-        .setExpirationTime("15m")
+        .setExpirationTime("1h")
         .sign(JWT_SECRET);
 }
 
-export async function createRefreshToken(payload: TokenPayload, jti?: string, expiresIn: string | number = "30d"): Promise<string> {
+export async function createRefreshToken(payload: TokenPayload, jti?: string, expiresIn: string | number = "90d"): Promise<string> {
     const token = new SignJWT({ ...payload });
     if (jti) {
         token.setJti(jti);

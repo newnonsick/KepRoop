@@ -23,8 +23,10 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
     const { data, error, isLoading, mutate } = useSWR("/api/auth/me", fetcher, {
-        revalidateOnFocus: false,
+        revalidateOnFocus: true,
         shouldRetryOnError: false,
+        refreshInterval: 1000 * 60 * 10, // Check every 10 minutes
+        focusThrottleInterval: 1000 * 60 * 5, // Throttle focus revalidation to 5 mins
     });
 
     const user = data?.user || null;

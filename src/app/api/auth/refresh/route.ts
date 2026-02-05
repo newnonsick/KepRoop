@@ -55,7 +55,7 @@ export async function POST() {
             id: newRefreshId,
             userId: payload.userId,
             tokenHash: newRefreshTokenHash,
-            expiresAt: new Date(Date.now() + 1000 * 60 * 60 * 24 * 30),
+            expiresAt: new Date(Date.now() + 1000 * 60 * 60 * 24 * 90),
         });
 
         const newAccessToken = await createAccessToken({ userId: payload.userId });
@@ -64,7 +64,7 @@ export async function POST() {
             httpOnly: true,
             secure: process.env.NODE_ENV === "production",
             sameSite: "lax",
-            maxAge: 60 * 15,
+            maxAge: 60 * 60,
             path: "/",
         });
 
@@ -72,7 +72,7 @@ export async function POST() {
             httpOnly: true,
             secure: process.env.NODE_ENV === "production",
             sameSite: "lax",
-            maxAge: 60 * 60 * 24 * 30, // 30 days
+            maxAge: 60 * 60 * 24 * 90, // 90 days
             path: "/",
         });
 
@@ -125,7 +125,7 @@ export async function GET(request: Request) {
             id: newRefreshId,
             userId: payload.userId,
             tokenHash: newRefreshTokenHash,
-            expiresAt: new Date(Date.now() + 1000 * 60 * 60 * 24 * 30),
+            expiresAt: new Date(Date.now() + 1000 * 60 * 60 * 24 * 90),
         });
 
         const newAccessToken = await createAccessToken({ userId: payload.userId });
@@ -136,7 +136,7 @@ export async function GET(request: Request) {
             httpOnly: true,
             secure: process.env.NODE_ENV === "production",
             sameSite: "lax",
-            maxAge: 60 * 15,
+            maxAge: 60 * 60,
             path: "/",
         });
 
@@ -144,7 +144,7 @@ export async function GET(request: Request) {
             httpOnly: true,
             secure: process.env.NODE_ENV === "production",
             sameSite: "lax",
-            maxAge: 60 * 60 * 24 * 30, // 30 days
+            maxAge: 60 * 60 * 24 * 90, // 90 days
             path: "/",
         });
 
