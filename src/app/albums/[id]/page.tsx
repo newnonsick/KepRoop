@@ -10,6 +10,7 @@ import { useAuth } from "@/components/providers/AuthProvider";
 
 import { DashboardNavbar } from "@/components/DashboardNavbar";
 import { ShareAlbumDialog } from "@/components/ShareAlbumDialog";
+import { EditAlbumDialog } from "@/components/EditAlbumDialog";
 import { TrashDialog } from "@/components/TrashDialog";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
@@ -58,6 +59,7 @@ export default function AlbumDetailPage({ params }: { params: Promise<{ id: stri
     const [uploadProgress, setUploadProgress] = useState({ current: 0, total: 0, fileName: '', percent: 0 });
     const [deletingImageId, setDeletingImageId] = useState<string | null>(null);
     const [deletingAlbum, setDeletingAlbum] = useState(false);
+    const [editingAlbum, setEditingAlbum] = useState(false);
     const [isDragging, setIsDragging] = useState(false);
     const [trashOpen, setTrashOpen] = useState(false);
     const [deleteAlbumConfirmOpen, setDeleteAlbumConfirmOpen] = useState(false);
@@ -377,7 +379,30 @@ export default function AlbumDetailPage({ params }: { params: Promise<{ id: stri
                     <div className="flex items-center gap-3">
 
 
-                        <ShareAlbumDialog albumId={album.id} albumTitle={album.title} albumVisibility={album.visibility} userRole={userRole} />
+                        <ShareAlbumDialog
+                            albumId={album.id}
+                            albumTitle={album.title}
+                            albumVisibility={album.visibility}
+                            userRole={userRole}
+                            albumOwnerId={album.ownerId}
+                        />
+
+                        {/* Edit Album Dialog */}
+                        {isOwner && (
+                            <EditAlbumDialog
+                                album={{
+                                    id: album.id,
+                                    title: album.title,
+                                    description: album.description,
+                                    visibility: album.visibility,
+                                    albumDate: album.albumDate || new Date().toISOString()
+                                }}
+                                open={editingAlbum}
+                                onOpenChange={setEditingAlbum}
+                                onSuccess={refreshAlbum}
+                                trigger={<span className="hidden" />}
+                            />
+                        )}
 
                         {canEdit && (
                             <label htmlFor="upload-input">
@@ -439,6 +464,14 @@ export default function AlbumDetailPage({ params }: { params: Promise<{ id: stri
                                             >
                                                 <Camera className="mr-2 h-4 w-4" />
                                                 Change Album Cover
+                                            </DropdownMenuItem>
+
+                                            <DropdownMenuItem
+                                                onClick={() => setEditingAlbum(true)}
+                                                className="cursor-pointer rounded-lg px-3 py-2 text-slate-600 focus:text-slate-800 focus:bg-slate-50"
+                                            >
+                                                <MoreVertical className="mr-2 h-4 w-4" />
+                                                Edit Details
                                             </DropdownMenuItem>
 
                                             {album.coverImageId && (

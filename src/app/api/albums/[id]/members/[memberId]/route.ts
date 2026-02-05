@@ -15,8 +15,9 @@ async function getUserId() {
     return payload?.userId;
 }
 
+// Update schema to include 'owner'
 const updateMemberSchema = z.object({
-    role: z.enum(["editor", "viewer"]),
+    role: z.enum(["editor", "viewer", "owner"]),
 });
 
 type Context = { params: Promise<{ id: string; memberId: string }> };
@@ -31,17 +32,34 @@ export async function PATCH(request: Request, context: Context) {
     const isOwner = await checkAlbumPermission(userId, albumId, "owner");
     if (!isOwner) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
-    // Cannot change owner's role
+    // Fetch album to identify Original Owner
     const album = await db.query.albums.findFirst({
         where: eq(albums.id, albumId),
     });
-    if (album?.ownerId === memberId) {
-        return NextResponse.json({ error: "Cannot change owner's role" }, { status: 400 });
+
+    if (!album) return NextResponse.json({ error: "Album not found" }, { status: 404 });
+
+    // RULE 1: Cannot change Original Owner's role
+    if (album.ownerId === memberId) {
+        return NextResponse.json({ error: "Cannot change the Original Owner's role" }, { status: 403 });
     }
 
     try {
         const body = await request.json();
         const { role } = updateMemberSchema.parse(body);
+
+        // RULE 2: Joint Owner Demotion Check
+        // If current user is NOT Original Owner, they cannot demote another Owner
+        if (userId !== album.ownerId) {
+            // Check if target is currently an owner
+            const targetMember = await db.query.albumMembers.findFirst({
+                where: and(eq(albumMembers.albumId, albumId), eq(albumMembers.userId, memberId))
+            });
+
+            if (targetMember?.role === "owner" && role !== "owner") {
+                return NextResponse.json({ error: "Only the Original Owner can demote Joint Owners" }, { status: 403 });
+            }
+        }
 
         await db.update(albumMembers)
             .set({ role })
@@ -65,13 +83,16 @@ export async function DELETE(request: Request, context: Context) {
     const isSelf = userId === memberId;
     const isOwner = await checkAlbumPermission(userId, albumId, "owner");
 
+    const album = await db.query.albums.findFirst({
+        where: eq(albums.id, albumId),
+    });
+
+    if (!album) return NextResponse.json({ error: "Album not found" }, { status: 404 });
+
     // Case 1: Leaving (isSelf)
     if (isSelf) {
-        const album = await db.query.albums.findFirst({
-            where: eq(albums.id, albumId),
-        });
-        if (album?.ownerId === userId) {
-            return NextResponse.json({ error: "Owner cannot leave the album. Delete the album instead." }, { status: 400 });
+        if (album.ownerId === userId) {
+            return NextResponse.json({ error: "Original Owner cannot leave. Delete the album instead." }, { status: 400 });
         }
     }
     // Case 2: Kicking (not isSelf)
@@ -79,12 +100,22 @@ export async function DELETE(request: Request, context: Context) {
         if (!isOwner) {
             return NextResponse.json({ error: "Only owners can remove members" }, { status: 403 });
         }
-        // Cannot kick the owner
-        const album = await db.query.albums.findFirst({
-            where: eq(albums.id, albumId),
-        });
-        if (album?.ownerId === memberId) {
-            return NextResponse.json({ error: "Cannot remove the owner" }, { status: 400 });
+
+        // RULE 1: Cannot kick Original Owner
+        if (album.ownerId === memberId) {
+            return NextResponse.json({ error: "Cannot remove the Original Owner" }, { status: 403 });
+        }
+
+        // RULE 2: Joint Owner Kick Check
+        // If current user is NOT Original Owner, they cannot kick another Owner
+        if (userId !== album.ownerId) {
+            const targetMember = await db.query.albumMembers.findFirst({
+                where: and(eq(albumMembers.albumId, albumId), eq(albumMembers.userId, memberId))
+            });
+
+            if (targetMember?.role === "owner") {
+                return NextResponse.json({ error: "Only the Original Owner can remove Joint Owners" }, { status: 403 });
+            }
         }
     }
 

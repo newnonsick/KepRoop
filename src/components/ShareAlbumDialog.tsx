@@ -42,6 +42,7 @@ import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
+import { useAuth } from "@/components/providers/AuthProvider";
 
 interface Member {
     userId: string;
@@ -60,12 +61,11 @@ interface ShareAlbumDialogProps {
     albumTitle: string;
     albumVisibility?: "public" | "private";
     userRole?: "owner" | "editor" | "viewer" | null;
+    albumOwnerId?: string;
     trigger?: React.ReactNode;
 }
 
-import { useAuth } from "@/components/providers/AuthProvider";
-
-export function ShareAlbumDialog({ albumId, albumTitle, albumVisibility = "private", userRole = null, trigger }: ShareAlbumDialogProps) {
+export function ShareAlbumDialog({ albumId, albumTitle, albumVisibility = "private", userRole = null, albumOwnerId, trigger }: ShareAlbumDialogProps) {
     const { user } = useAuth();
     const [open, setOpen] = useState(false);
     const [loading, setLoading] = useState(false);
@@ -81,6 +81,10 @@ export function ShareAlbumDialog({ albumId, albumTitle, albumVisibility = "priva
 
     const isOwner = userRole === "owner";
     const canShareAsEditor = userRole === "owner" || userRole === "editor";
+
+    // Check if a user is the Original Owner (if albumOwnerId is provided)
+    const isOriginalOwner = (userId: string) => albumOwnerId ? userId === albumOwnerId : false;
+    const isCurrentUserOriginalOwner = currentUserId ? isOriginalOwner(currentUserId) : false;
 
     // Fetch members
     const fetchMembers = useCallback(async () => {
@@ -198,7 +202,7 @@ export function ShareAlbumDialog({ albumId, albumTitle, albumVisibility = "priva
         }
     };
 
-    const updateMemberRole = async (memberUserId: string, newRole: "viewer" | "editor") => {
+    const updateMemberRole = async (memberUserId: string, newRole: "viewer" | "editor" | "owner") => {
         try {
             const res = await fetch(`/api/albums/${albumId}/members/${memberUserId}`, {
                 method: "PATCH",
@@ -210,7 +214,8 @@ export function ShareAlbumDialog({ albumId, albumTitle, albumVisibility = "priva
                 setMembers(prev => prev.map(m => m.userId === memberUserId ? { ...m, role: newRole } : m));
                 toast.success("Role updated");
             } else {
-                toast.error("Failed to update role");
+                const data = await res.json();
+                toast.error(data.error || "Failed to update role");
             }
         } catch (err) {
             toast.error("Network error");
@@ -328,7 +333,9 @@ export function ShareAlbumDialog({ albumId, albumTitle, albumVisibility = "priva
                                                         {member.user.name} {member.userId === currentUserId && "(You)"}
                                                     </p>
                                                     {member.role === "owner" && (
-                                                        <Badge variant="outline" className="bg-amber-50 text-amber-600 border-amber-100 text-[9px] h-3.5 px-1 font-bold uppercase tracking-tight">Owner</Badge>
+                                                        <Badge variant="outline" className="bg-amber-50 text-amber-600 border-amber-100 text-[9px] h-3.5 px-1 font-bold uppercase tracking-tight">
+                                                            {isOriginalOwner(member.userId) ? "Owner" : "Joint Owner"}
+                                                        </Badge>
                                                     )}
                                                 </div>
                                                 <p className="text-xs text-slate-500 truncate">{member.user.email}</p>
@@ -355,6 +362,14 @@ export function ShareAlbumDialog({ albumId, albumTitle, albumVisibility = "priva
                                                         >
                                                             Editor
                                                         </DropdownMenuItem>
+
+                                                        <DropdownMenuItem
+                                                            onClick={() => updateMemberRole(member.userId, "owner")}
+                                                            className="rounded-lg text-sm"
+                                                        >
+                                                            Joint Owner
+                                                        </DropdownMenuItem>
+
                                                         <DropdownMenuSeparator className="bg-slate-50/50" />
                                                         <DropdownMenuItem
                                                             onClick={() => removeMember(member.userId)}
@@ -367,8 +382,42 @@ export function ShareAlbumDialog({ albumId, albumTitle, albumVisibility = "priva
                                                 </DropdownMenu>
                                             ) : (
                                                 <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest px-2 group-hover:hidden">
-                                                    {member.role === "owner" ? "" : member.role}
+                                                    {member.role === "owner" ? (isOriginalOwner(member.userId) ? "Owner" : "Joint Owner") : member.role}
                                                 </span>
+                                            )}
+
+                                            {/* Allow Original Owner to Manage Joint Owners */}
+                                            {isCurrentUserOriginalOwner && member.role === "owner" && !isOriginalOwner(member.userId) && (
+                                                <DropdownMenu>
+                                                    <DropdownMenuTrigger asChild>
+                                                        <Button variant="ghost" size="sm" className="h-7 px-2 text-[11px] font-medium text-slate-600 gap-1 rounded-lg hover:bg-white border border-transparent hover:border-slate-100 shadow-none">
+                                                            <span>Manage</span>
+                                                            <ChevronDown className="h-3 w-3 text-slate-400" />
+                                                        </Button>
+                                                    </DropdownMenuTrigger>
+                                                    <DropdownMenuContent align="end" className="rounded-xl border-slate-100 shadow-lg min-w-32">
+                                                        <DropdownMenuItem
+                                                            onClick={() => updateMemberRole(member.userId, "editor")}
+                                                            className="rounded-lg text-sm"
+                                                        >
+                                                            Demote to Editor
+                                                        </DropdownMenuItem>
+                                                        <DropdownMenuItem
+                                                            onClick={() => updateMemberRole(member.userId, "viewer")}
+                                                            className="rounded-lg text-sm"
+                                                        >
+                                                            Demote to Viewer
+                                                        </DropdownMenuItem>
+                                                        <DropdownMenuSeparator className="bg-slate-50/50" />
+                                                        <DropdownMenuItem
+                                                            onClick={() => removeMember(member.userId)}
+                                                            className="text-red-500 focus:text-red-600 focus:bg-red-50 rounded-lg text-sm"
+                                                        >
+                                                            <UserMinus className="h-4 w-4 mr-2" />
+                                                            Remove
+                                                        </DropdownMenuItem>
+                                                    </DropdownMenuContent>
+                                                </DropdownMenu>
                                             )}
                                         </div>
                                     ))

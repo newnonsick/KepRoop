@@ -21,6 +21,7 @@ const updateAlbumSchema = z.object({
     description: z.string().optional(),
     visibility: z.enum(["public", "private"]).optional(),
     coverImageId: z.string().uuid().nullable().optional(),
+    albumDate: z.coerce.date().optional(),
 });
 
 type Context = { params: Promise<{ id: string }> };
