@@ -102,10 +102,58 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
         }
     };
 
+    // Get active section label for mobile header
+    const activeSectionLabel = navItems.find(item => item.id === activeSection)?.label || "Settings";
+
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent className="sm:max-w-[600px] p-0 overflow-hidden bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 rounded-2xl">
-                <div className="flex min-h-[400px]">
+            <DialogContent className="w-[calc(100%-2rem)] max-w-[400px] sm:max-w-[600px] max-h-[85vh] p-0 overflow-hidden bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-xl [&>button]:hidden">
+                {/* Mobile Layout */}
+                <div className="flex flex-col h-full md:hidden">
+                    {/* Mobile Header */}
+                    <div className="flex items-center justify-between px-4 py-3 border-b border-slate-200 dark:border-slate-800">
+                        <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100">
+                            {activeSectionLabel}
+                        </h2>
+                        <button
+                            onClick={() => onOpenChange(false)}
+                            className="p-2 -mr-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors text-slate-500 dark:text-slate-400"
+                        >
+                            <X className="w-5 h-5" />
+                        </button>
+                    </div>
+
+                    {/* Mobile Tab Navigation */}
+                    <div className="flex border-b border-slate-200 dark:border-slate-800 px-4">
+                        {navItems.map((item) => (
+                            <button
+                                key={item.id}
+                                onClick={() => setActiveSection(item.id)}
+                                className={cn(
+                                    "flex items-center gap-2 px-3 py-3 text-sm font-medium transition-all relative",
+                                    activeSection === item.id
+                                        ? "text-slate-900 dark:text-slate-100"
+                                        : "text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300"
+                                )}
+                            >
+                                <item.icon className="w-4 h-4" />
+                                {item.label}
+                                {/* Active indicator */}
+                                {activeSection === item.id && (
+                                    <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-slate-900 dark:bg-slate-100 rounded-full" />
+                                )}
+                            </button>
+                        ))}
+                    </div>
+
+                    {/* Mobile Content Area */}
+                    <div className="flex-1 overflow-y-auto p-4">
+                        {renderContent()}
+                    </div>
+                </div>
+
+                {/* Desktop Layout */}
+                <div className="hidden md:flex min-h-[400px]">
                     {/* Sidebar Navigation */}
                     <div className="w-48 border-r border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 p-2">
                         {/* Close Button */}
@@ -136,132 +184,141 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
                         </nav>
                     </div>
 
-                    {/* Content Area */}
-                    <div className="flex-1 p-6">
-                        {/* General Section */}
-                        {activeSection === "general" && (
-                            <div className="space-y-6">
-                                <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100">General</h2>
-
-                                {/* Appearance */}
-                                <div className="flex items-center justify-between py-3 border-b border-slate-100 dark:border-slate-800">
-                                    <div>
-                                        <span className="text-sm font-medium text-slate-700 dark:text-slate-300">Appearance</span>
-                                        <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                                            {theme === "dark" ? "Dark" : "Light"} mode
-                                        </p>
-                                    </div>
-                                    <ThemeToggle />
-                                </div>
-                            </div>
-                        )}
-
-                        {/* Account Section */}
-                        {activeSection === "account" && (
-                            <div className="space-y-6">
-                                <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100">Account</h2>
-
-                                <form onSubmit={handleUpdateProfile} className="space-y-4">
-                                    <div className="space-y-2">
-                                        <Label htmlFor="name" className="text-sm font-medium text-slate-700 dark:text-slate-300">
-                                            Display Name
-                                        </Label>
-                                        <Input
-                                            id="name"
-                                            value={name}
-                                            onChange={(e) => setName(e.target.value)}
-                                            className="h-11 rounded-xl border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 focus:bg-white dark:focus:bg-slate-700 transition-all text-slate-900 dark:text-slate-100"
-                                            placeholder="Your name"
-                                        />
-                                        <p className="text-[11px] text-slate-400 dark:text-slate-500 px-1">
-                                            This is how your name will appear to other users.
-                                        </p>
-                                    </div>
-                                    <Button
-                                        type="submit"
-                                        disabled={loading || name === user?.name}
-                                        className="w-full rounded-xl h-11 bg-blue-500 hover:bg-blue-600 shadow-lg shadow-blue-500/20 font-medium disabled:shadow-none"
-                                    >
-                                        {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                                        Save Changes
-                                    </Button>
-                                </form>
-                            </div>
-                        )}
-
-                        {/* Security Section */}
-                        {activeSection === "security" && (
-                            <div className="space-y-6">
-                                <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100">Security</h2>
-
-                                <form onSubmit={handleUpdatePassword} className="space-y-4">
-                                    {!user?.hasPassword ? (
-                                        <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-100 dark:border-amber-800 rounded-xl p-4">
-                                            <div className="flex items-start gap-3">
-                                                <KeyRound className="h-5 w-5 text-amber-500 mt-0.5" />
-                                                <div>
-                                                    <h4 className="text-sm font-semibold text-amber-700 dark:text-amber-400">Set a Password</h4>
-                                                    <p className="text-xs text-amber-600 dark:text-amber-500 mt-1">
-                                                        You signed in via Google. Set a password to log in with your email address as well.
-                                                    </p>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    ) : (
-                                        <div className="space-y-2">
-                                            <Label htmlFor="current" className="text-sm font-medium text-slate-700 dark:text-slate-300">
-                                                Current Password
-                                            </Label>
-                                            <Input
-                                                id="current"
-                                                type="password"
-                                                value={currentPassword}
-                                                onChange={(e) => setCurrentPassword(e.target.value)}
-                                                className="h-11 rounded-xl border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 focus:bg-white dark:focus:bg-slate-700 transition-all text-slate-900 dark:text-slate-100"
-                                            />
-                                        </div>
-                                    )}
-
-                                    <div className="space-y-2">
-                                        <Label htmlFor="new" className="text-sm font-medium text-slate-700 dark:text-slate-300">
-                                            {user?.hasPassword ? "New Password" : "Create Password"}
-                                        </Label>
-                                        <Input
-                                            id="new"
-                                            type="password"
-                                            value={newPassword}
-                                            onChange={(e) => setNewPassword(e.target.value)}
-                                            className="h-11 rounded-xl border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 focus:bg-white dark:focus:bg-slate-700 transition-all text-slate-900 dark:text-slate-100"
-                                        />
-                                    </div>
-
-                                    <div className="space-y-2">
-                                        <Label htmlFor="confirm" className="text-sm font-medium text-slate-700 dark:text-slate-300">
-                                            Confirm Password
-                                        </Label>
-                                        <Input
-                                            id="confirm"
-                                            type="password"
-                                            value={confirmPassword}
-                                            onChange={(e) => setConfirmPassword(e.target.value)}
-                                            className="h-11 rounded-xl border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 focus:bg-white dark:focus:bg-slate-700 transition-all text-slate-900 dark:text-slate-100"
-                                        />
-                                    </div>
-
-                                    <Button
-                                        type="submit"
-                                        disabled={loading}
-                                        className="w-full rounded-xl h-11 bg-blue-500 hover:bg-blue-600 shadow-lg shadow-blue-500/20 font-medium"
-                                    >
-                                        {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                                        {user?.hasPassword ? "Update Password" : "Set Password"}
-                                    </Button>
-                                </form>
-                            </div>
-                        )}
+                    {/* Desktop Content Area */}
+                    <div className="flex-1 p-6 overflow-y-auto">
+                        {renderContent()}
                     </div>
                 </div>
             </DialogContent>
         </Dialog>
     );
+
+    // Extracted content rendering function
+    function renderContent() {
+        return (
+            <>
+                {/* General Section */}
+                {activeSection === "general" && (
+                    <div className="space-y-6">
+                        <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100 hidden md:block">General</h2>
+
+                        {/* Appearance */}
+                        <div className="flex items-center justify-between py-3 border-b border-slate-100 dark:border-slate-800">
+                            <div>
+                                <span className="text-sm font-medium text-slate-700 dark:text-slate-300">Appearance</span>
+                                <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                                    {theme === "dark" ? "Dark" : "Light"} mode
+                                </p>
+                            </div>
+                            <ThemeToggle />
+                        </div>
+                    </div>
+                )}
+
+                {/* Account Section */}
+                {activeSection === "account" && (
+                    <div className="space-y-6">
+                        <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100 hidden md:block">Account</h2>
+
+                        <form onSubmit={handleUpdateProfile} className="space-y-4">
+                            <div className="space-y-2">
+                                <Label htmlFor="name" className="text-sm font-medium text-slate-700 dark:text-slate-300">
+                                    Display Name
+                                </Label>
+                                <Input
+                                    id="name"
+                                    value={name}
+                                    onChange={(e) => setName(e.target.value)}
+                                    className="h-11 rounded-xl border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 focus:bg-white dark:focus:bg-slate-700 transition-all text-slate-900 dark:text-slate-100"
+                                    placeholder="Your name"
+                                />
+                                <p className="text-[11px] text-slate-400 dark:text-slate-500 px-1">
+                                    This is how your name will appear to other users.
+                                </p>
+                            </div>
+                            <Button
+                                type="submit"
+                                disabled={loading || name === user?.name}
+                                className="w-full rounded-xl h-11 bg-blue-500 hover:bg-blue-600 shadow-lg shadow-blue-500/20 font-medium disabled:shadow-none"
+                            >
+                                {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                                Save Changes
+                            </Button>
+                        </form>
+                    </div>
+                )}
+
+                {/* Security Section */}
+                {activeSection === "security" && (
+                    <div className="space-y-6">
+                        <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100 hidden md:block">Security</h2>
+
+                        <form onSubmit={handleUpdatePassword} className="space-y-4">
+                            {!user?.hasPassword ? (
+                                <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-100 dark:border-amber-800 rounded-xl p-4">
+                                    <div className="flex items-start gap-3">
+                                        <KeyRound className="h-5 w-5 text-amber-500 mt-0.5" />
+                                        <div>
+                                            <h4 className="text-sm font-semibold text-amber-700 dark:text-amber-400">Set a Password</h4>
+                                            <p className="text-xs text-amber-600 dark:text-amber-500 mt-1">
+                                                You signed in via Google. Set a password to log in with your email address as well.
+                                            </p>
+                                        </div>
+                                    </div>
+                                </div>
+                            ) : (
+                                <div className="space-y-2">
+                                    <Label htmlFor="current" className="text-sm font-medium text-slate-700 dark:text-slate-300">
+                                        Current Password
+                                    </Label>
+                                    <Input
+                                        id="current"
+                                        type="password"
+                                        value={currentPassword}
+                                        onChange={(e) => setCurrentPassword(e.target.value)}
+                                        className="h-11 rounded-xl border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 focus:bg-white dark:focus:bg-slate-700 transition-all text-slate-900 dark:text-slate-100"
+                                    />
+                                </div>
+                            )}
+
+                            <div className="space-y-2">
+                                <Label htmlFor="new" className="text-sm font-medium text-slate-700 dark:text-slate-300">
+                                    {user?.hasPassword ? "New Password" : "Create Password"}
+                                </Label>
+                                <Input
+                                    id="new"
+                                    type="password"
+                                    value={newPassword}
+                                    onChange={(e) => setNewPassword(e.target.value)}
+                                    className="h-11 rounded-xl border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 focus:bg-white dark:focus:bg-slate-700 transition-all text-slate-900 dark:text-slate-100"
+                                />
+                            </div>
+
+                            <div className="space-y-2">
+                                <Label htmlFor="confirm" className="text-sm font-medium text-slate-700 dark:text-slate-300">
+                                    Confirm Password
+                                </Label>
+                                <Input
+                                    id="confirm"
+                                    type="password"
+                                    value={confirmPassword}
+                                    onChange={(e) => setConfirmPassword(e.target.value)}
+                                    className="h-11 rounded-xl border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 focus:bg-white dark:focus:bg-slate-700 transition-all text-slate-900 dark:text-slate-100"
+                                />
+                            </div>
+
+                            <Button
+                                type="submit"
+                                disabled={loading}
+                                className="w-full rounded-xl h-11 bg-blue-500 hover:bg-blue-600 shadow-lg shadow-blue-500/20 font-medium"
+                            >
+                                {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                                {user?.hasPassword ? "Update Password" : "Set Password"}
+                            </Button>
+                        </form>
+                    </div>
+                )}
+            </>
+        );
+    }
 }

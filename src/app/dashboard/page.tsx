@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback, useMemo } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Plus, Lock, Globe, Image as ImageIcon, Menu, Search, X, Calendar, ChevronDown, ChevronUp, Filter, LayoutGrid, Loader2, ArrowUpDown, ArrowDown, ArrowUp } from "lucide-react";
+import { Plus, Lock, Globe, Image as ImageIcon, Menu, Search, X, Calendar, ChevronDown, ChevronUp, Filter, LayoutGrid, Loader2, ArrowUpDown, ArrowDown, ArrowUp, Check } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
@@ -220,7 +220,7 @@ export default function DashboardPage() {
 
                             <div className="flex items-center gap-3">
                                 {/* Desktop Toolbar - Clean layout like mobile */}
-                                <div className="hidden lg:flex items-center gap-2">
+                                <div className="hidden xl:flex items-center gap-2">
                                     <div className="relative group w-[320px]">
                                         <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 group-focus-within:text-blue-500 transition-colors" />
                                         <Input
@@ -255,31 +255,55 @@ export default function DashboardPage() {
                                         <DropdownMenuContent align="end" className="w-48 bg-white dark:bg-slate-800 rounded-2xl shadow-xl border-slate-100 dark:border-slate-700 p-1">
                                             <DropdownMenuItem
                                                 onClick={() => { setSortBy("albumDate"); setSortDir("desc"); }}
-                                                className="rounded-xl px-3 py-2 cursor-pointer focus:bg-slate-50 dark:focus:bg-slate-700 dark:text-slate-200"
+                                                className={cn(
+                                                    "rounded-xl px-3 py-2 cursor-pointer dark:text-slate-200",
+                                                    sortBy === "albumDate" && sortDir === "desc"
+                                                        ? "bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400"
+                                                        : "focus:bg-slate-50 dark:focus:bg-slate-700"
+                                                )}
                                             >
-                                                <ArrowDown className="mr-2 h-4 w-4 text-slate-400" />
+                                                <ArrowDown className={cn("mr-2 h-4 w-4", sortBy === "albumDate" && sortDir === "desc" ? "text-blue-500" : "text-slate-400")} />
                                                 Album Date (Newest)
+                                                {sortBy === "albumDate" && sortDir === "desc" && <Check className="ml-auto h-4 w-4 text-blue-500" />}
                                             </DropdownMenuItem>
                                             <DropdownMenuItem
                                                 onClick={() => { setSortBy("albumDate"); setSortDir("asc"); }}
-                                                className="rounded-xl px-3 py-2 cursor-pointer focus:bg-slate-50 dark:focus:bg-slate-700 dark:text-slate-200"
+                                                className={cn(
+                                                    "rounded-xl px-3 py-2 cursor-pointer dark:text-slate-200",
+                                                    sortBy === "albumDate" && sortDir === "asc"
+                                                        ? "bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400"
+                                                        : "focus:bg-slate-50 dark:focus:bg-slate-700"
+                                                )}
                                             >
-                                                <ArrowUp className="mr-2 h-4 w-4 text-slate-400" />
+                                                <ArrowUp className={cn("mr-2 h-4 w-4", sortBy === "albumDate" && sortDir === "asc" ? "text-blue-500" : "text-slate-400")} />
                                                 Album Date (Oldest)
+                                                {sortBy === "albumDate" && sortDir === "asc" && <Check className="ml-auto h-4 w-4 text-blue-500" />}
                                             </DropdownMenuItem>
                                             <DropdownMenuItem
                                                 onClick={() => { setSortBy("createdAt"); setSortDir("desc"); }}
-                                                className="rounded-xl px-3 py-2 cursor-pointer focus:bg-slate-50 dark:focus:bg-slate-700 dark:text-slate-200"
+                                                className={cn(
+                                                    "rounded-xl px-3 py-2 cursor-pointer dark:text-slate-200",
+                                                    sortBy === "createdAt" && sortDir === "desc"
+                                                        ? "bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400"
+                                                        : "focus:bg-slate-50 dark:focus:bg-slate-700"
+                                                )}
                                             >
-                                                <ArrowDown className="mr-2 h-4 w-4 text-slate-400" />
+                                                <ArrowDown className={cn("mr-2 h-4 w-4", sortBy === "createdAt" && sortDir === "desc" ? "text-blue-500" : "text-slate-400")} />
                                                 Created (Newest)
+                                                {sortBy === "createdAt" && sortDir === "desc" && <Check className="ml-auto h-4 w-4 text-blue-500" />}
                                             </DropdownMenuItem>
                                             <DropdownMenuItem
                                                 onClick={() => { setSortBy("createdAt"); setSortDir("asc"); }}
-                                                className="rounded-xl px-3 py-2 cursor-pointer focus:bg-slate-50 dark:focus:bg-slate-700 dark:text-slate-200"
+                                                className={cn(
+                                                    "rounded-xl px-3 py-2 cursor-pointer dark:text-slate-200",
+                                                    sortBy === "createdAt" && sortDir === "asc"
+                                                        ? "bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400"
+                                                        : "focus:bg-slate-50 dark:focus:bg-slate-700"
+                                                )}
                                             >
-                                                <ArrowUp className="mr-2 h-4 w-4 text-slate-400" />
+                                                <ArrowUp className={cn("mr-2 h-4 w-4", sortBy === "createdAt" && sortDir === "asc" ? "text-blue-500" : "text-slate-400")} />
                                                 Created (Oldest)
+                                                {sortBy === "createdAt" && sortDir === "asc" && <Check className="ml-auto h-4 w-4 text-blue-500" />}
                                             </DropdownMenuItem>
                                         </DropdownMenuContent>
                                     </DropdownMenu>
@@ -307,7 +331,7 @@ export default function DashboardPage() {
 
                         {/* Collapsible Filters (Desktop) */}
                         <div className={cn(
-                            "hidden lg:block overflow-hidden transition-all duration-300 ease-in-out",
+                            "hidden xl:block overflow-hidden transition-all duration-300 ease-in-out",
                             showFilters ? "max-h-32 mb-6" : "max-h-0"
                         )}>
                             <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-3xl p-4 shadow-sm">
@@ -395,7 +419,7 @@ export default function DashboardPage() {
                         </div>
 
                         {/* Active Filter Chips (Desktop) */}
-                        <div className="hidden lg:flex flex-wrap items-center gap-2 mb-8">
+                        <div className="hidden xl:flex flex-wrap items-center gap-2 mb-8">
                             {searchQuery && (
                                 <div className="flex items-center gap-1.5 pl-3 pr-1 py-1 bg-white dark:bg-slate-800 border border-blue-100 dark:border-blue-800 rounded-full text-xs font-semibold text-blue-600 dark:text-blue-400 shadow-sm animate-in fade-in zoom-in duration-300">
                                     <span>Search: &quot;{searchQuery}&quot;</span>
@@ -422,8 +446,8 @@ export default function DashboardPage() {
                             )}
                         </div>
 
-                        {/* Mobile Search & Filters */}
-                        <div className="lg:hidden flex flex-col gap-4 mb-8">
+                        {/* Mobile/Tablet Search & Filters */}
+                        <div className="xl:hidden flex flex-col gap-4 mb-8">
                             <div className="flex gap-2">
                                 <div className="relative group flex-1">
                                     <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 group-focus-within:text-blue-500 transition-colors" />
@@ -457,31 +481,55 @@ export default function DashboardPage() {
                                     <DropdownMenuContent align="end" className="w-48 bg-white dark:bg-slate-800 rounded-2xl shadow-xl border-slate-100 dark:border-slate-700 p-1">
                                         <DropdownMenuItem
                                             onClick={() => { setSortBy("albumDate"); setSortDir("desc"); }}
-                                            className="rounded-xl px-3 py-2 cursor-pointer focus:bg-slate-50"
+                                            className={cn(
+                                                "rounded-xl px-3 py-2 cursor-pointer dark:text-slate-200",
+                                                sortBy === "albumDate" && sortDir === "desc"
+                                                    ? "bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400"
+                                                    : "focus:bg-slate-50 dark:focus:bg-slate-700"
+                                            )}
                                         >
-                                            <ArrowDown className="mr-2 h-4 w-4 text-slate-400" />
+                                            <ArrowDown className={cn("mr-2 h-4 w-4", sortBy === "albumDate" && sortDir === "desc" ? "text-blue-500" : "text-slate-400")} />
                                             Album Date (Newest)
+                                            {sortBy === "albumDate" && sortDir === "desc" && <Check className="ml-auto h-4 w-4 text-blue-500" />}
                                         </DropdownMenuItem>
                                         <DropdownMenuItem
                                             onClick={() => { setSortBy("albumDate"); setSortDir("asc"); }}
-                                            className="rounded-xl px-3 py-2 cursor-pointer focus:bg-slate-50"
+                                            className={cn(
+                                                "rounded-xl px-3 py-2 cursor-pointer dark:text-slate-200",
+                                                sortBy === "albumDate" && sortDir === "asc"
+                                                    ? "bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400"
+                                                    : "focus:bg-slate-50 dark:focus:bg-slate-700"
+                                            )}
                                         >
-                                            <ArrowUp className="mr-2 h-4 w-4 text-slate-400" />
+                                            <ArrowUp className={cn("mr-2 h-4 w-4", sortBy === "albumDate" && sortDir === "asc" ? "text-blue-500" : "text-slate-400")} />
                                             Album Date (Oldest)
+                                            {sortBy === "albumDate" && sortDir === "asc" && <Check className="ml-auto h-4 w-4 text-blue-500" />}
                                         </DropdownMenuItem>
                                         <DropdownMenuItem
                                             onClick={() => { setSortBy("createdAt"); setSortDir("desc"); }}
-                                            className="rounded-xl px-3 py-2 cursor-pointer focus:bg-slate-50"
+                                            className={cn(
+                                                "rounded-xl px-3 py-2 cursor-pointer dark:text-slate-200",
+                                                sortBy === "createdAt" && sortDir === "desc"
+                                                    ? "bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400"
+                                                    : "focus:bg-slate-50 dark:focus:bg-slate-700"
+                                            )}
                                         >
-                                            <ArrowDown className="mr-2 h-4 w-4 text-slate-400" />
+                                            <ArrowDown className={cn("mr-2 h-4 w-4", sortBy === "createdAt" && sortDir === "desc" ? "text-blue-500" : "text-slate-400")} />
                                             Created (Newest)
+                                            {sortBy === "createdAt" && sortDir === "desc" && <Check className="ml-auto h-4 w-4 text-blue-500" />}
                                         </DropdownMenuItem>
                                         <DropdownMenuItem
                                             onClick={() => { setSortBy("createdAt"); setSortDir("asc"); }}
-                                            className="rounded-xl px-3 py-2 cursor-pointer focus:bg-slate-50"
+                                            className={cn(
+                                                "rounded-xl px-3 py-2 cursor-pointer dark:text-slate-200",
+                                                sortBy === "createdAt" && sortDir === "asc"
+                                                    ? "bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400"
+                                                    : "focus:bg-slate-50 dark:focus:bg-slate-700"
+                                            )}
                                         >
-                                            <ArrowUp className="mr-2 h-4 w-4 text-slate-400" />
+                                            <ArrowUp className={cn("mr-2 h-4 w-4", sortBy === "createdAt" && sortDir === "asc" ? "text-blue-500" : "text-slate-400")} />
                                             Created (Oldest)
+                                            {sortBy === "createdAt" && sortDir === "asc" && <Check className="ml-auto h-4 w-4 text-blue-500" />}
                                         </DropdownMenuItem>
                                     </DropdownMenuContent>
                                 </DropdownMenu>
@@ -582,7 +630,7 @@ export default function DashboardPage() {
                         {/* Album Grid */}
                         {
                             (loading || (!loading && data?.albums?.length && albums.length === 0)) ? (
-                                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-6">
                                     {[...Array(6)].map((_, i) => (
                                         <div key={i} className="bg-white dark:bg-slate-800 rounded-3xl overflow-hidden shadow-sm border border-slate-100 dark:border-slate-700">
                                             <Skeleton className="aspect-[4/3] rounded-none" />
@@ -633,7 +681,7 @@ export default function DashboardPage() {
                                 </div>
                             ) : (
                                 <>
-                                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-6">
                                         {filteredAlbums.map((album: Album) => (
                                             <Link
                                                 href={`/albums/${album.id}`}
