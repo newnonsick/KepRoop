@@ -1,26 +1,174 @@
 @import "tailwindcss";
 
+@plugin "tailwindcss-animate";
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+/* Premium Blue & White Design System */
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  /* Soft warm white background */
+  --background: 210 40% 99%;
+  --foreground: 215 25% 15%;
+
+  /* Pure white cards */
+  --card: 0 0% 100%;
+  --card-foreground: 215 25% 15%;
+
+  /* Popovers match cards */
+  --popover: 0 0% 100%;
+  --popover-foreground: 215 25% 15%;
+
+  /* Primary: refined blue */
+  --primary: 210 89% 52%;
+  --primary-foreground: 0 0% 100%;
+
+  /* Secondary: light blue tint */
+  --secondary: 210 100% 97%;
+  --secondary-foreground: 210 70% 35%;
+
+  /* Muted: soft blue-gray */
+  --muted: 210 30% 96%;
+  --muted-foreground: 215 15% 50%;
+
+  /* Accent: subtle blue highlight */
+  --accent: 210 100% 96%;
+  --accent-foreground: 210 89% 45%;
+
+  /* Destructive: warm red */
+  --destructive: 0 72% 55%;
+  --destructive-foreground: 0 0% 100%;
+
+  /* Borders: barely visible blue-tint */
+  --border: 210 25% 92%;
+  --input: 210 25% 92%;
+  --ring: 210 89% 52%;
+
+  /* Charts: blue palette */
+  --chart-1: 210 89% 52%;
+  --chart-2: 200 80% 50%;
+  --chart-3: 220 70% 55%;
+  --chart-4: 190 75% 45%;
+  --chart-5: 230 65% 60%;
+
+  /* Larger radius for softness */
+  --radius: 1rem;
+}
+
+.dark {
+  /* Deep blue-black */
+  --background: 215 30% 8%;
+  --foreground: 210 20% 95%;
+
+  /* Elevated cards */
+  --card: 215 25% 12%;
+  --card-foreground: 210 20% 95%;
+
+  --popover: 215 25% 12%;
+  --popover-foreground: 210 20% 95%;
+
+  /* Brighter blue for dark mode */
+  --primary: 210 100% 60%;
+  --primary-foreground: 215 30% 8%;
+
+  /* Dark secondary */
+  --secondary: 215 20% 18%;
+  --secondary-foreground: 210 20% 90%;
+
+  /* Muted dark */
+  --muted: 215 20% 18%;
+  --muted-foreground: 210 15% 55%;
+
+  /* Accent dark */
+  --accent: 215 25% 18%;
+  --accent-foreground: 210 100% 70%;
+
+  /* Destructive dark mode */
+  --destructive: 0 60% 50%;
+  --destructive-foreground: 0 0% 100%;
+
+  /* Dark borders */
+  --border: 215 20% 20%;
+  --input: 215 20% 20%;
+  --ring: 210 100% 60%;
+
+  /* Dark charts */
+  --chart-1: 210 100% 60%;
+  --chart-2: 200 90% 55%;
+  --chart-3: 220 80% 60%;
+  --chart-4: 190 85% 50%;
+  --chart-5: 230 75% 65%;
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  @apply bg-background text-foreground;
+  font-family: var(--font-geist-sans), system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Selection styling for premium feel */
+::selection {
+  background-color: hsl(210 89% 52% / 0.15);
+  color: hsl(var(--foreground));
+}
+
+/* Focus ring styling */
+:focus-visible {
+  outline: 2px solid hsl(210 89% 52%);
+  outline-offset: 2px;
+}
+
+/* Smooth scrolling */
+html {
+  scroll-behavior: smooth;
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: hsl(210 25% 85%);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: hsl(210 25% 75%);
 }
