@@ -16,7 +16,7 @@ export async function generateMetadata({ params }: { params: Promise<{ code: str
     // Quick validation
     if (!inviteId || !secret) {
         return {
-            title: "Invalid Invite | Keproop",
+            title: "Invalid Invite | KepRoop",
             description: "This invite link is invalid."
         };
     }
@@ -34,7 +34,7 @@ export async function generateMetadata({ params }: { params: Promise<{ code: str
 
     if (!invite) {
         return {
-            title: "Invite Not Found | Keproop",
+            title: "Invite Not Found | KepRoop",
             description: "This invite link may have expired or is invalid."
         };
     }
@@ -51,7 +51,7 @@ export async function generateMetadata({ params }: { params: Promise<{ code: str
 
     if (!isValid) {
         return {
-            title: "Invalid Invite | Keproop",
+            title: "Invalid Invite | KepRoop",
             description: "This invite link is invalid."
         };
     }
@@ -69,7 +69,7 @@ export async function generateMetadata({ params }: { params: Promise<{ code: str
 
     if (!album) {
         return {
-            title: "Album Not Found | Keproop",
+            title: "Album Not Found | KepRoop",
             description: "The album associated with this invite cannot be found."
         };
     }
@@ -95,7 +95,7 @@ export async function generateMetadata({ params }: { params: Promise<{ code: str
         imageUrl = '/images/og-default.png';
     }
 
-    const title = `Join "${album.title}" on Keproop`;
+    const title = `Join "${album.title}" on KepRoop`;
     const description = `You've been invited to view this album. ${album.images.length} photos.`;
 
     return {

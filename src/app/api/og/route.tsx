@@ -25,7 +25,7 @@ export async function GET(request: Request) {
                         alignItems: 'center',
                         justifyContent: 'center',
                     }}>
-                        Keproop Album
+                        KepRoop Album
                     </div>
                 ),
                 { width: 1200, height: 630 }
@@ -53,7 +53,7 @@ export async function GET(request: Request) {
                         justifyContent: 'center',
                         fontWeight: 'bold'
                     }}>
-                        Keproop
+                        KepRoop
                     </div>
                 ),
                 { width: 1200, height: 630 }

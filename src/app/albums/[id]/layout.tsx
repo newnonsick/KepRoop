@@ -21,14 +21,14 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
 
     if (!album) {
         return {
-            title: "Album Not Found | Keproop",
+            title: "Album Not Found | KepRoop",
             description: "The album you are looking for does not exist or has been removed."
         };
     }
 
     if (album.visibility === 'private') {
         return {
-            title: "Private Album | Keproop",
+            title: "Private Album | KepRoop",
             description: "This album is private.",
         };
     }
@@ -68,11 +68,11 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
     }
 
     return {
-        title: `${album.title} | Keproop`,
-        description: album.description || `View ${album.title} on Keproop`,
+        title: `${album.title} | KepRoop`,
+        description: album.description || `View ${album.title} on KepRoop`,
         openGraph: {
             title: album.title,
-            description: album.description || `View ${album.title} on Keproop`,
+            description: album.description || `View ${album.title} on KepRoop`,
             images: [
                 {
                     url: imageUrl,
@@ -86,7 +86,7 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
         twitter: {
             card: 'summary_large_image',
             title: album.title,
-            description: album.description || `View ${album.title} on Keproop`,
+            description: album.description || `View ${album.title} on KepRoop`,
             images: [imageUrl],
         }
     };
