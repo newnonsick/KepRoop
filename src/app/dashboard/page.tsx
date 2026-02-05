@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback, useMemo } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Plus, Lock, Globe, Image as ImageIcon, Menu, Search, X, Calendar, ChevronDown, ChevronUp, Filter, LayoutGrid } from "lucide-react";
+import { Plus, Lock, Globe, Image as ImageIcon, Menu, Search, X, Calendar, ChevronDown, ChevronUp, Filter, LayoutGrid, Loader2, ArrowUpDown, ArrowDown, ArrowUp } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
@@ -38,19 +38,107 @@ import useSWR from "swr";
 import { fetcher } from "@/lib/fetcher";
 import { useAuth } from "@/components/providers/AuthProvider";
 
+// Build API URL with query params
+function buildAlbumsUrl(params: {
+    cursor?: string | null;
+    filter: FilterType;
+    visibility: "all" | "public" | "private";
+    startDate: string;
+    endDate: string;
+    search: string;
+    sortBy: string;
+    sortDir: string;
+}) {
+    const url = new URL("/api/albums", window.location.origin);
+    if (params.cursor) url.searchParams.set("cursor", params.cursor);
+    if (params.filter !== "all") url.searchParams.set("filter", params.filter);
+    if (params.visibility !== "all") url.searchParams.set("visibility", params.visibility);
+    if (params.startDate) url.searchParams.set("startDate", params.startDate);
+    if (params.endDate) url.searchParams.set("endDate", params.endDate);
+    if (params.search) url.searchParams.set("search", params.search);
+    if (params.sortBy !== "joinedAt") url.searchParams.set("sortBy", params.sortBy);
+    if (params.sortDir !== "desc") url.searchParams.set("sortDir", params.sortDir);
+    return url.toString();
+}
+
 export default function DashboardPage() {
-    const { data, error, isLoading: loading, mutate } = useSWR("/api/albums", fetcher);
     const { user } = useAuth();
     const [filter, setFilter] = useState<FilterType>("all");
     const [searchQuery, setSearchQuery] = useState("");
     const [startDate, setStartDate] = useState("");
     const [endDate, setEndDate] = useState("");
     const [visibilityFilter, setVisibilityFilter] = useState<"all" | "public" | "private">("all");
+    const [sortBy, setSortBy] = useState<"albumDate" | "createdAt">("albumDate");
+    const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
     const [showFilters, setShowFilters] = useState(false);
     const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
     const router = useRouter();
 
-    const albums = data?.albums || [];
+    // Pagination state
+    const [albums, setAlbums] = useState<Album[]>([]);
+    const [cursor, setCursor] = useState<string | null>(null);
+    const [hasMore, setHasMore] = useState(false);
+    const [isLoadingMore, setIsLoadingMore] = useState(false);
+
+    // Build URL for initial fetch (no cursor)
+    const initialUrl = buildAlbumsUrl({
+        cursor: null,
+        filter,
+        visibility: visibilityFilter,
+        startDate,
+        endDate,
+        search: searchQuery,
+        sortBy,
+        sortDir,
+    });
+
+    const { data, error, isLoading: loading, mutate } = useSWR(initialUrl, fetcher);
+
+    // Update albums when data changes (initial load or filter change)
+    useEffect(() => {
+        if (data) {
+            setAlbums(data.albums || []);
+            setCursor(data.nextCursor || null);
+            setHasMore(data.hasMore || false);
+        }
+    }, [data]);
+
+    // Reset pagination when filters change
+    useEffect(() => {
+        setAlbums([]);
+        setCursor(null);
+        setHasMore(false);
+    }, [filter, visibilityFilter, startDate, endDate, searchQuery, sortBy, sortDir]);
+
+    const loadMore = async () => {
+        if (!cursor || isLoadingMore) return;
+
+        setIsLoadingMore(true);
+        try {
+            const url = buildAlbumsUrl({
+                cursor,
+                filter,
+                visibility: visibilityFilter,
+                startDate,
+                endDate,
+                search: searchQuery,
+                sortBy,
+                sortDir,
+            });
+            const res = await fetch(url);
+            const moreData = await res.json();
+
+            if (moreData.albums) {
+                setAlbums(prev => [...prev, ...moreData.albums]);
+                setCursor(moreData.nextCursor || null);
+                setHasMore(moreData.hasMore || false);
+            }
+        } catch (err) {
+            console.error("Failed to load more albums:", err);
+        } finally {
+            setIsLoadingMore(false);
+        }
+    };
 
     const refreshAlbums = () => mutate();
 
@@ -62,56 +150,8 @@ export default function DashboardPage() {
         });
     };
 
-    const filteredAlbums = useMemo(() => {
-        let result = albums;
-
-        // Filter by role
-        switch (filter) {
-            case "mine":
-                result = result.filter((a: any) => a.taskRole === "owner");
-                break;
-            case "shared":
-                result = result.filter((a: any) => a.taskRole !== "owner");
-                break;
-        }
-
-        // Filter by search query (name)
-        if (searchQuery) {
-            result = result.filter((a: any) =>
-                a.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                a.description?.toLowerCase().includes(searchQuery.toLowerCase())
-            );
-        }
-
-        // Filter by visibility
-        if (visibilityFilter !== "all") {
-            result = result.filter((a: any) => a.visibility === visibilityFilter);
-        }
-
-        // Filter by date range
-        if (startDate || endDate) {
-            result = result.filter((a: any) => {
-                const albumDate = new Date(a.albumDate);
-                albumDate.setHours(0, 0, 0, 0);
-
-                if (startDate) {
-                    const start = new Date(startDate);
-                    start.setHours(0, 0, 0, 0);
-                    if (albumDate < start) return false;
-                }
-
-                if (endDate) {
-                    const end = new Date(endDate);
-                    end.setHours(23, 59, 59, 999);
-                    if (albumDate > end) return false;
-                }
-
-                return true;
-            });
-        }
-
-        return result;
-    }, [albums, filter, searchQuery, startDate, endDate, visibilityFilter]);
+    // Albums are now server-filtered, no client filtering needed
+    const filteredAlbums = albums;
 
     const getPageTitle = () => {
         switch (filter) {
@@ -178,15 +218,15 @@ export default function DashboardPage() {
                             </div>
 
                             <div className="flex items-center gap-3">
-                                {/* Desktop Toolbar */}
+                                {/* Desktop Toolbar - Clean layout like mobile */}
                                 <div className="hidden lg:flex items-center gap-2">
-                                    <div className="relative group w-[400px]">
+                                    <div className="relative group w-[320px]">
                                         <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 group-focus-within:text-blue-500 transition-colors" />
                                         <Input
-                                            placeholder="Search albums by name or description..."
+                                            placeholder="Search albums..."
                                             value={searchQuery}
                                             onChange={(e) => setSearchQuery(e.target.value)}
-                                            className="pl-11 pr-10 h-12 bg-white border-slate-200 rounded-2xl shadow-sm focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 transition-all text-sm font-medium placeholder:text-slate-400"
+                                            className="pl-11 pr-10 h-11 bg-white border-slate-200 rounded-2xl shadow-sm focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 transition-all text-sm font-medium placeholder:text-slate-400"
                                         />
                                         {searchQuery && (
                                             <button
@@ -198,49 +238,65 @@ export default function DashboardPage() {
                                         )}
                                     </div>
 
+                                    {/* Sort Dropdown - Compact with single direction arrow */}
                                     <DropdownMenu>
                                         <DropdownMenuTrigger asChild>
                                             <Button
                                                 variant="outline"
-                                                className={cn(
-                                                    "h-12 px-4 gap-2 rounded-2xl transition-all border-slate-200 text-slate-600 bg-white hover:bg-slate-50",
-                                                    visibilityFilter !== "all" && "bg-blue-50 border-blue-200 text-blue-600 shadow-sm"
-                                                )}
+                                                className="h-11 px-3 gap-1.5 rounded-2xl transition-all border-slate-200 text-slate-600 bg-white hover:bg-slate-50"
                                             >
-                                                {visibilityFilter === "all" ? <Globe className="h-4 w-4" /> :
-                                                    visibilityFilter === "public" ? <Globe className="h-4 w-4 text-blue-500" /> :
-                                                        <Lock className="h-4 w-4 text-blue-500" />}
-                                                <span className="capitalize">{visibilityFilter === "all" ? "Visibility" : visibilityFilter}</span>
-                                                <ChevronDown className="h-4 w-4 opacity-50" />
+                                                {sortDir === "desc" ? <ArrowDown className="h-4 w-4" /> : <ArrowUp className="h-4 w-4" />}
+                                                <span className="text-sm">
+                                                    {sortBy === "albumDate" ? "Album Date" : "Created"}
+                                                </span>
                                             </Button>
                                         </DropdownMenuTrigger>
                                         <DropdownMenuContent align="end" className="w-48 bg-white rounded-2xl shadow-xl border-slate-100 p-1">
-                                            <DropdownMenuItem onClick={() => setVisibilityFilter("all")} className="rounded-xl px-3 py-2 cursor-pointer focus:bg-slate-50">
-                                                <LayoutGrid className="mr-2 h-4 w-4 text-slate-400" />
-                                                All Visibility
+                                            <DropdownMenuItem
+                                                onClick={() => { setSortBy("albumDate"); setSortDir("desc"); }}
+                                                className="rounded-xl px-3 py-2 cursor-pointer focus:bg-slate-50"
+                                            >
+                                                <ArrowDown className="mr-2 h-4 w-4 text-slate-400" />
+                                                Album Date (Newest)
                                             </DropdownMenuItem>
-                                            <DropdownMenuItem onClick={() => setVisibilityFilter("public")} className="rounded-xl px-3 py-2 cursor-pointer focus:bg-slate-50">
-                                                <Globe className="mr-2 h-4 w-4 text-slate-400" />
-                                                Public Albums
+                                            <DropdownMenuItem
+                                                onClick={() => { setSortBy("albumDate"); setSortDir("asc"); }}
+                                                className="rounded-xl px-3 py-2 cursor-pointer focus:bg-slate-50"
+                                            >
+                                                <ArrowUp className="mr-2 h-4 w-4 text-slate-400" />
+                                                Album Date (Oldest)
                                             </DropdownMenuItem>
-                                            <DropdownMenuItem onClick={() => setVisibilityFilter("private")} className="rounded-xl px-3 py-2 cursor-pointer focus:bg-slate-50">
-                                                <Lock className="mr-2 h-4 w-4 text-slate-400" />
-                                                Private Albums
+                                            <DropdownMenuItem
+                                                onClick={() => { setSortBy("createdAt"); setSortDir("desc"); }}
+                                                className="rounded-xl px-3 py-2 cursor-pointer focus:bg-slate-50"
+                                            >
+                                                <ArrowDown className="mr-2 h-4 w-4 text-slate-400" />
+                                                Created (Newest)
+                                            </DropdownMenuItem>
+                                            <DropdownMenuItem
+                                                onClick={() => { setSortBy("createdAt"); setSortDir("asc"); }}
+                                                className="rounded-xl px-3 py-2 cursor-pointer focus:bg-slate-50"
+                                            >
+                                                <ArrowUp className="mr-2 h-4 w-4 text-slate-400" />
+                                                Created (Oldest)
                                             </DropdownMenuItem>
                                         </DropdownMenuContent>
                                     </DropdownMenu>
 
+                                    {/* Filter Button */}
                                     <Button
                                         variant="outline"
                                         onClick={() => setShowFilters(!showFilters)}
                                         className={cn(
-                                            "h-12 px-4 gap-2 rounded-2xl transition-all border-slate-200 text-slate-600 bg-white hover:bg-slate-50",
-                                            (startDate || endDate || showFilters) && "bg-blue-50 border-blue-200 text-blue-600 shadow-sm"
+                                            "h-11 px-3 gap-1.5 rounded-2xl transition-all border-slate-200 text-slate-600 bg-white hover:bg-slate-50",
+                                            (startDate || endDate || visibilityFilter !== "all" || showFilters) && "bg-blue-50 border-blue-200 text-blue-600 shadow-sm"
                                         )}
                                     >
-                                        <Calendar className="h-4 w-4" />
-                                        <span>Date</span>
-                                        {showFilters ? <ChevronUp className="h-4 w-4 opacity-50" /> : <ChevronDown className="h-4 w-4 opacity-50" />}
+                                        <Filter className="h-4 w-4" />
+                                        <span className="text-sm">Filters</span>
+                                        {(visibilityFilter !== "all" || startDate || endDate) && (
+                                            <span className="w-2 h-2 bg-blue-500 rounded-full" />
+                                        )}
                                     </Button>
                                 </div>
 
@@ -248,34 +304,64 @@ export default function DashboardPage() {
                             </div>
                         </div>
 
-                        {/* Collapsible Date Filters (Desktop) */}
+                        {/* Collapsible Filters (Desktop) */}
                         <div className={cn(
                             "hidden lg:block overflow-hidden transition-all duration-300 ease-in-out",
-                            showFilters ? "max-h-24 mb-6" : "max-h-0"
+                            showFilters ? "max-h-32 mb-6" : "max-h-0"
                         )}>
-                            <div className="bg-white border border-slate-200 rounded-3xl p-4 shadow-sm flex items-center justify-between">
-                                <div className="flex items-center gap-4">
+                            <div className="bg-white border border-slate-200 rounded-3xl p-4 shadow-sm">
+                                <div className="flex items-center justify-between gap-6">
+                                    {/* Visibility Filter */}
                                     <div className="flex items-center gap-3">
-                                        <Label className="text-xs font-bold text-slate-400 uppercase tracking-widest ml-2">Date Range:</Label>
-                                        <div className="flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-2xl px-4 h-11 focus-within:bg-white focus-within:border-blue-500 transition-all shadow-sm">
+                                        <Label className="text-xs font-bold text-slate-400 uppercase tracking-widest">Visibility:</Label>
+                                        <div className="flex items-center gap-1.5">
+                                            {(["all", "public", "private"] as const).map((vis) => (
+                                                <button
+                                                    key={vis}
+                                                    onClick={() => setVisibilityFilter(vis)}
+                                                    className={cn(
+                                                        "flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition-all border",
+                                                        visibilityFilter === vis
+                                                            ? "bg-blue-50 border-blue-200 text-blue-600"
+                                                            : "bg-slate-50 border-slate-200 text-slate-500 hover:bg-slate-100"
+                                                    )}
+                                                >
+                                                    {vis === "all" && <LayoutGrid className="h-3.5 w-3.5" />}
+                                                    {vis === "public" && <Globe className="h-3.5 w-3.5" />}
+                                                    {vis === "private" && <Lock className="h-3.5 w-3.5" />}
+                                                    <span className="capitalize">{vis}</span>
+                                                </button>
+                                            ))}
+                                        </div>
+                                    </div>
+
+                                    {/* Date Range Filter */}
+                                    <div className="flex items-center gap-3">
+                                        <Label className="text-xs font-bold text-slate-400 uppercase tracking-widest">Date Range:</Label>
+                                        <div className="flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-2xl px-3 h-10 focus-within:bg-white focus-within:border-blue-500 transition-all">
                                             <Calendar className="h-4 w-4 text-slate-400" />
                                             <input
                                                 type="date"
                                                 value={startDate}
                                                 onChange={(e) => setStartDate(e.target.value)}
-                                                className="bg-transparent border-none text-sm text-slate-600 focus:ring-0 p-0 w-32 font-medium"
+                                                className="bg-transparent border-none text-sm text-slate-600 focus:ring-0 p-0 w-28 font-medium"
                                             />
-                                            <span className="text-slate-300 font-light mx-1">to</span>
+                                            <span className="text-slate-300 font-light">to</span>
                                             <input
                                                 type="date"
                                                 value={endDate}
                                                 onChange={(e) => setEndDate(e.target.value)}
-                                                className="bg-transparent border-none text-sm text-slate-600 focus:ring-0 p-0 w-32 font-medium"
+                                                className="bg-transparent border-none text-sm text-slate-600 focus:ring-0 p-0 w-28 font-medium"
                                             />
+                                            {(startDate || endDate) && (
+                                                <button
+                                                    onClick={() => { setStartDate(""); setEndDate(""); }}
+                                                    className="p-1 hover:bg-slate-200 rounded-full transition-colors"
+                                                >
+                                                    <X className="h-3 w-3 text-slate-400" />
+                                                </button>
+                                            )}
                                         </div>
-                                    </div>
-
-                                    <div className="flex items-center gap-2 ml-4">
                                         <Button
                                             variant="ghost"
                                             size="sm"
@@ -285,9 +371,9 @@ export default function DashboardPage() {
                                                 setStartDate(start.toISOString().split('T')[0]);
                                                 setEndDate(new Date().toISOString().split('T')[0]);
                                             }}
-                                            className="h-9 rounded-xl text-xs font-semibold text-slate-500 hover:text-blue-600 hover:bg-blue-50 border border-transparent hover:border-blue-100"
+                                            className="h-8 px-2 rounded-xl text-xs font-semibold text-slate-500 hover:text-blue-600 hover:bg-blue-50"
                                         >
-                                            Last 7 Days
+                                            7 Days
                                         </Button>
                                         <Button
                                             variant="ghost"
@@ -298,24 +384,12 @@ export default function DashboardPage() {
                                                 setStartDate(start.toISOString().split('T')[0]);
                                                 setEndDate(new Date().toISOString().split('T')[0]);
                                             }}
-                                            className="h-9 rounded-xl text-xs font-semibold text-slate-500 hover:text-blue-600 hover:bg-blue-50 border border-transparent hover:border-blue-100"
+                                            className="h-8 px-2 rounded-xl text-xs font-semibold text-slate-500 hover:text-blue-600 hover:bg-blue-50"
                                         >
-                                            Last 30 Days
+                                            30 Days
                                         </Button>
                                     </div>
                                 </div>
-
-                                {(startDate || endDate) && (
-                                    <Button
-                                        variant="ghost"
-                                        size="sm"
-                                        onClick={() => { setStartDate(""); setEndDate(""); }}
-                                        className="h-9 px-3 text-xs font-bold text-red-500 hover:bg-red-50 gap-1.5 rounded-xl transition-colors"
-                                    >
-                                        <X className="h-3.5 w-3.5" />
-                                        Clear Range
-                                    </Button>
-                                )}
                             </div>
                         </div>
 
@@ -367,6 +441,50 @@ export default function DashboardPage() {
                                         </button>
                                     )}
                                 </div>
+
+                                {/* Mobile Sort Dropdown */}
+                                <DropdownMenu>
+                                    <DropdownMenuTrigger asChild>
+                                        <Button
+                                            variant="outline"
+                                            size="icon"
+                                            className="h-12 w-12 rounded-2xl transition-all border-slate-200 bg-white shrink-0"
+                                        >
+                                            {sortDir === "desc" ? <ArrowDown className="h-4 w-4" /> : <ArrowUp className="h-4 w-4" />}
+                                        </Button>
+                                    </DropdownMenuTrigger>
+                                    <DropdownMenuContent align="end" className="w-48 bg-white rounded-2xl shadow-xl border-slate-100 p-1">
+                                        <DropdownMenuItem
+                                            onClick={() => { setSortBy("albumDate"); setSortDir("desc"); }}
+                                            className="rounded-xl px-3 py-2 cursor-pointer focus:bg-slate-50"
+                                        >
+                                            <ArrowDown className="mr-2 h-4 w-4 text-slate-400" />
+                                            Album Date (Newest)
+                                        </DropdownMenuItem>
+                                        <DropdownMenuItem
+                                            onClick={() => { setSortBy("albumDate"); setSortDir("asc"); }}
+                                            className="rounded-xl px-3 py-2 cursor-pointer focus:bg-slate-50"
+                                        >
+                                            <ArrowUp className="mr-2 h-4 w-4 text-slate-400" />
+                                            Album Date (Oldest)
+                                        </DropdownMenuItem>
+                                        <DropdownMenuItem
+                                            onClick={() => { setSortBy("createdAt"); setSortDir("desc"); }}
+                                            className="rounded-xl px-3 py-2 cursor-pointer focus:bg-slate-50"
+                                        >
+                                            <ArrowDown className="mr-2 h-4 w-4 text-slate-400" />
+                                            Created (Newest)
+                                        </DropdownMenuItem>
+                                        <DropdownMenuItem
+                                            onClick={() => { setSortBy("createdAt"); setSortDir("asc"); }}
+                                            className="rounded-xl px-3 py-2 cursor-pointer focus:bg-slate-50"
+                                        >
+                                            <ArrowUp className="mr-2 h-4 w-4 text-slate-400" />
+                                            Created (Oldest)
+                                        </DropdownMenuItem>
+                                    </DropdownMenuContent>
+                                </DropdownMenu>
+
                                 <Button
                                     variant="outline"
                                     size="icon"
@@ -461,140 +579,165 @@ export default function DashboardPage() {
                         </div>
 
                         {/* Album Grid */}
-                        {loading ? (
-                            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-6">
-                                {[...Array(6)].map((_, i) => (
-                                    <div key={i} className="bg-white rounded-3xl overflow-hidden shadow-sm border border-slate-100">
-                                        <Skeleton className="aspect-[4/3] rounded-none" />
-                                        <div className="p-5 space-y-3">
-                                            <Skeleton className="h-5 w-2/3 rounded-lg" />
-                                            <Skeleton className="h-4 w-1/2 rounded-lg" />
+                        {
+                            loading ? (
+                                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                                    {[...Array(6)].map((_, i) => (
+                                        <div key={i} className="bg-white rounded-3xl overflow-hidden shadow-sm border border-slate-100">
+                                            <Skeleton className="aspect-[4/3] rounded-none" />
+                                            <div className="p-5 space-y-3">
+                                                <Skeleton className="h-5 w-2/3 rounded-lg" />
+                                                <Skeleton className="h-4 w-1/2 rounded-lg" />
+                                            </div>
                                         </div>
-                                    </div>
-                                ))}
-                            </div>
-                        ) : filteredAlbums.length === 0 ? (
-                            <div className="flex flex-col items-center justify-center py-20 bg-white rounded-[2rem] border border-slate-100 shadow-sm border-dashed">
-                                <div className="w-20 h-20 bg-blue-50 rounded-2xl flex items-center justify-center mb-6">
-                                    <ImageIcon className="h-10 w-10 text-blue-400" strokeWidth={1.5} />
+                                    ))}
                                 </div>
-                                <h3 className="text-xl font-semibold text-slate-800 mb-2">
-                                    {searchQuery ? "No matches found" : "No albums here"}
-                                </h3>
-                                <p className="text-slate-500 mb-8 text-center max-w-xs">
-                                    {searchQuery
-                                        ? `We couldn't find any albums matching "${searchQuery}"`
-                                        : (filter === "all"
-                                            ? "Create your first album to start organizing your photos"
-                                            : filter === "mine"
-                                                ? "You haven't created any albums yet"
-                                                : "No one has shared any albums with you yet")
-                                    }
-                                </p>
-                                {searchQuery ? (
-                                    <Button
-                                        variant="outline"
-                                        onClick={() => setSearchQuery("")}
-                                        className="rounded-2xl px-6 h-12 border-slate-200 text-slate-600 hover:bg-slate-50"
-                                    >
-                                        Clear search
-                                    </Button>
-                                ) : filter !== "shared" && (
-                                    <CreateAlbumDialog
-                                        trigger={
-                                            <Button className="gap-2 bg-blue-500 hover:bg-blue-600 text-white shadow-lg shadow-blue-500/20 rounded-2xl px-6 h-12">
-                                                <Plus className="h-4 w-4" />
-                                                Create album
-                                            </Button>
+                            ) : filteredAlbums.length === 0 ? (
+                                <div className="flex flex-col items-center justify-center py-20 bg-white rounded-[2rem] border border-slate-100 shadow-sm border-dashed">
+                                    <div className="w-20 h-20 bg-blue-50 rounded-2xl flex items-center justify-center mb-6">
+                                        <ImageIcon className="h-10 w-10 text-blue-400" strokeWidth={1.5} />
+                                    </div>
+                                    <h3 className="text-xl font-semibold text-slate-800 mb-2">
+                                        {searchQuery ? "No matches found" : "No albums here"}
+                                    </h3>
+                                    <p className="text-slate-500 mb-8 text-center max-w-xs">
+                                        {searchQuery
+                                            ? `We couldn't find any albums matching "${searchQuery}"`
+                                            : (filter === "all"
+                                                ? "Create your first album to start organizing your photos"
+                                                : filter === "mine"
+                                                    ? "You haven't created any albums yet"
+                                                    : "No one has shared any albums with you yet")
                                         }
-                                        onSuccess={refreshAlbums}
-                                    />
-                                )}
-                            </div>
-                        ) : (
-                            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-6">
-                                {filteredAlbums.map((album: Album) => (
-                                    <Link
-                                        href={`/albums/${album.id}`}
-                                        key={album.id}
-                                        className="group bg-white rounded-3xl overflow-hidden border border-slate-100 hover:border-blue-200 hover:shadow-xl hover:shadow-blue-500/5 transition-all duration-300 flex flex-col"
-                                    >
-                                        {/* Cover */}
-                                        <div className="relative">
-                                            <AlbumCover
-                                                coverImageUrl={album.coverImageUrl}
-                                                previewImageUrls={album.previewImageUrls}
-                                                imageCount={album.imageCount}
-                                                title={album.title}
+                                    </p>
+                                    {searchQuery ? (
+                                        <Button
+                                            variant="outline"
+                                            onClick={() => setSearchQuery("")}
+                                            className="rounded-2xl px-6 h-12 border-slate-200 text-slate-600 hover:bg-slate-50"
+                                        >
+                                            Clear search
+                                        </Button>
+                                    ) : filter !== "shared" && (
+                                        <CreateAlbumDialog
+                                            trigger={
+                                                <Button className="gap-2 bg-blue-500 hover:bg-blue-600 text-white shadow-lg shadow-blue-500/20 rounded-2xl px-6 h-12">
+                                                    <Plus className="h-4 w-4" />
+                                                    Create album
+                                                </Button>
+                                            }
+                                            onSuccess={refreshAlbums}
+                                        />
+                                    )}
+                                </div>
+                            ) : (
+                                <>
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                                        {filteredAlbums.map((album: Album) => (
+                                            <Link
+                                                href={`/albums/${album.id}`}
+                                                key={album.id}
+                                                className="group bg-white rounded-3xl overflow-hidden border border-slate-100 hover:border-blue-200 hover:shadow-xl hover:shadow-blue-500/5 transition-all duration-300 flex flex-col"
+                                            >
+                                                {/* Cover */}
+                                                <div className="relative">
+                                                    <AlbumCover
+                                                        coverImageUrl={album.coverImageUrl}
+                                                        previewImageUrls={album.previewImageUrls}
+                                                        imageCount={album.imageCount}
+                                                        title={album.title}
+                                                    />
+
+                                                    {/* Visibility Badge */}
+                                                    <div className="absolute top-4 left-4">
+                                                        <span className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white/90 backdrop-blur-md rounded-xl text-xs font-semibold text-slate-600 shadow-sm border border-white/50">
+                                                            {album.visibility === "private" ? (
+                                                                <Lock className="h-3.5 w-3.5 text-blue-500" strokeWidth={2.5} />
+                                                            ) : (
+                                                                <Globe className="h-3.5 w-3.5 text-blue-500" strokeWidth={2.5} />
+                                                            )}
+                                                            <span className="capitalize">{album.visibility}</span>
+                                                        </span>
+                                                    </div>
+                                                </div>
+
+                                                {/* Info */}
+                                                <div className="p-6">
+                                                    <div className="flex items-center gap-2 text-xs font-medium text-slate-400/80 mt-1">
+                                                        <Calendar className="h-3.5 w-3.5" />
+                                                        {formatLocalDate(album.albumDate)}
+                                                    </div>
+                                                    <h3 className="font-semibold text-lg text-slate-800 mt-2 truncate group-hover:text-blue-600 transition-colors">
+                                                        {album.title}
+                                                    </h3>
+                                                    <p className="text-sm text-slate-500 mt-1.5 line-clamp-1">
+                                                        {album.description || "No description provided"}
+                                                    </p>
+
+                                                    <div className="flex items-center justify-between mt-5 pt-5 border-t border-slate-50">
+                                                        <span className={cn(
+                                                            "text-[10px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-lg",
+                                                            album.taskRole === "owner"
+                                                                ? "bg-blue-50 text-blue-600"
+                                                                : "bg-slate-100 text-slate-500"
+                                                        )}>
+                                                            {album.taskRole}
+                                                        </span>
+
+                                                        <span className="text-xs font-medium text-slate-400 flex items-center gap-1.5">
+                                                            <ImageIcon className="h-3.5 w-3.5" />
+                                                            {album.imageCount || 0}
+                                                        </span>
+                                                    </div>
+                                                </div>
+                                            </Link>
+                                        ))}
+
+                                        {/* New Album Card */}
+                                        {filter !== "shared" && (
+                                            <CreateAlbumDialog
+                                                trigger={
+                                                    <button className="aspect-auto min-h-[320px] bg-white rounded-[2rem] border-2 border-dashed border-slate-200 hover:border-blue-300 hover:bg-blue-50/20 transition-all flex flex-col items-center justify-center gap-4 cursor-pointer group">
+                                                        <div className="w-16 h-16 bg-slate-50 group-hover:bg-blue-100/50 rounded-2xl flex items-center justify-center transition-all group-hover:scale-110">
+                                                            <Plus className="h-8 w-8 text-slate-400 group-hover:text-blue-500" strokeWidth={2.5} />
+                                                        </div>
+                                                        <div className="text-center">
+                                                            <span className="text-sm font-semibold text-slate-600 group-hover:text-blue-600 block">Create Album</span>
+                                                            <span className="text-xs text-slate-400 mt-1">Start a new collection</span>
+                                                        </div>
+                                                    </button>
+                                                }
+                                                onSuccess={refreshAlbums}
                                             />
+                                        )}
+                                    </div>
 
-                                            {/* Visibility Badge */}
-                                            <div className="absolute top-4 left-4">
-                                                <span className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white/90 backdrop-blur-md rounded-xl text-xs font-semibold text-slate-600 shadow-sm border border-white/50">
-                                                    {album.visibility === "private" ? (
-                                                        <Lock className="h-3.5 w-3.5 text-blue-500" strokeWidth={2.5} />
-                                                    ) : (
-                                                        <Globe className="h-3.5 w-3.5 text-blue-500" strokeWidth={2.5} />
-                                                    )}
-                                                    <span className="capitalize">{album.visibility}</span>
-                                                </span>
-                                            </div>
+                                    {/* Load More Button */}
+                                    {hasMore && (
+                                        <div className="flex justify-center mt-8">
+                                            <Button
+                                                variant="outline"
+                                                onClick={loadMore}
+                                                disabled={isLoadingMore}
+                                                className="rounded-2xl px-8 h-12 border-slate-200 text-slate-600 hover:bg-slate-50 hover:border-blue-300 transition-all"
+                                            >
+                                                {isLoadingMore ? (
+                                                    <>
+                                                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                                                        Loading...
+                                                    </>
+                                                ) : (
+                                                    "Load more albums"
+                                                )}
+                                            </Button>
                                         </div>
-
-                                        {/* Info */}
-                                        <div className="p-6">
-                                            <div className="flex items-center gap-2 text-xs font-medium text-slate-400/80 mt-1">
-                                                <Calendar className="h-3.5 w-3.5" />
-                                                {formatLocalDate(album.albumDate)}
-                                            </div>
-                                            <h3 className="font-semibold text-lg text-slate-800 mt-2 truncate group-hover:text-blue-600 transition-colors">
-                                                {album.title}
-                                            </h3>
-                                            <p className="text-sm text-slate-500 mt-1.5 line-clamp-1">
-                                                {album.description || "No description provided"}
-                                            </p>
-
-                                            <div className="flex items-center justify-between mt-5 pt-5 border-t border-slate-50">
-                                                <span className={cn(
-                                                    "text-[10px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-lg",
-                                                    album.taskRole === "owner"
-                                                        ? "bg-blue-50 text-blue-600"
-                                                        : "bg-slate-100 text-slate-500"
-                                                )}>
-                                                    {album.taskRole}
-                                                </span>
-
-                                                <span className="text-xs font-medium text-slate-400 flex items-center gap-1.5">
-                                                    <ImageIcon className="h-3.5 w-3.5" />
-                                                    {album.imageCount || 0}
-                                                </span>
-                                            </div>
-                                        </div>
-                                    </Link>
-                                ))}
-
-                                {/* New Album Card */}
-                                {filter !== "shared" && (
-                                    <CreateAlbumDialog
-                                        trigger={
-                                            <button className="aspect-auto min-h-[320px] bg-white rounded-[2rem] border-2 border-dashed border-slate-200 hover:border-blue-300 hover:bg-blue-50/20 transition-all flex flex-col items-center justify-center gap-4 cursor-pointer group">
-                                                <div className="w-16 h-16 bg-slate-50 group-hover:bg-blue-100/50 rounded-2xl flex items-center justify-center transition-all group-hover:scale-110">
-                                                    <Plus className="h-8 w-8 text-slate-400 group-hover:text-blue-500" strokeWidth={2.5} />
-                                                </div>
-                                                <div className="text-center">
-                                                    <span className="text-sm font-semibold text-slate-600 group-hover:text-blue-600 block">Create Album</span>
-                                                    <span className="text-xs text-slate-400 mt-1">Start a new collection</span>
-                                                </div>
-                                            </button>
-                                        }
-                                        onSuccess={refreshAlbums}
-                                    />
-                                )}
-                            </div>
-                        )}
-                    </div>
-                </main>
-            </div>
-        </div>
+                                    )}
+                                </>
+                            )
+                        }
+                    </div >
+                </main >
+            </div >
+        </div >
     );
 }

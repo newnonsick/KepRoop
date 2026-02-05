@@ -39,7 +39,7 @@ export function DashboardSidebar({
     ];
 
     return (
-        <aside className={cn("w-64 flex flex-col gap-6 py-6 px-4 border-r border-slate-100 bg-white/50 backdrop-blur-sm sticky top-16 h-[calc(100vh-64px)] overflow-y-auto", className)}>
+        <aside className={cn("w-64 flex flex-col gap-6 py-6 px-4 border-r border-slate-100 bg-white backdrop-blur-sm sticky top-16 h-[calc(100vh-64px)] overflow-y-auto", className)}>
             {/* New Album Button */}
             <div className="px-2">
                 <CreateAlbumDialog

@@ -303,7 +303,7 @@ export function ShareAlbumDialog({ albumId, albumTitle, albumVisibility = "priva
                                 placeholder="Search members by name or email..."
                                 value={searchQuery}
                                 onChange={(e) => setSearchQuery(e.target.value)}
-                                className="h-9 bg-slate-50 border-slate-100 rounded-xl text-xs px-3 focus:bg-white transition-all"
+                                className="h-9 bg-slate-50 border-slate-100 rounded-xl text-xs px-3 focus:bg-white transition-all placeholder:text-slate-400"
                             />
                         </div>
 
@@ -329,7 +329,7 @@ export function ShareAlbumDialog({ albumId, albumTitle, albumVisibility = "priva
                                             </Avatar>
                                             <div className="flex-1 min-w-0">
                                                 <div className="flex items-center gap-2">
-                                                    <p className="text-sm font-medium text-slate-800 truncate">
+                                                    <p className="text-sm font-medium text-slate-800 truncate group-hover:text-blue-600">
                                                         {member.user.name} {member.userId === currentUserId && "(You)"}
                                                     </p>
                                                     {member.role === "owner" && (
@@ -380,11 +380,7 @@ export function ShareAlbumDialog({ albumId, albumTitle, albumVisibility = "priva
                                                         </DropdownMenuItem>
                                                     </DropdownMenuContent>
                                                 </DropdownMenu>
-                                            ) : (
-                                                <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest px-2 group-hover:hidden">
-                                                    {member.role === "owner" ? (isOriginalOwner(member.userId) ? "Owner" : "Joint Owner") : member.role}
-                                                </span>
-                                            )}
+                                            ) : <div></div>}
 
                                             {/* Allow Original Owner to Manage Joint Owners */}
                                             {isCurrentUserOriginalOwner && member.role === "owner" && !isOriginalOwner(member.userId) && (

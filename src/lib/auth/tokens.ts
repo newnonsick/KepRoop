@@ -63,7 +63,7 @@ export async function createGuestToken(albumIds: string[]): Promise<string> {
     return new SignJWT({ allowedAlbums: albumIds })
         .setProtectedHeader({ alg: ALG })
         .setIssuedAt()
-        .setExpirationTime("30d") // Guest access valid for 30 days
+        .setExpirationTime("1hr") // 1 hour
         .sign(JWT_SECRET);
 }
 

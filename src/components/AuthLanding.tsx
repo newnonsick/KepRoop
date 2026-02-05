@@ -228,7 +228,7 @@ export default function AuthLanding({ googleClientId }: AuthLandingProps) {
             </div>
 
             {/* Right Side - Auth Form */}
-            <div className="flex-1 flex flex-col justify-center px-6 sm:px-12 lg:px-16 xl:px-24 bg-white">
+            <div className="flex-1 flex flex-col justify-center px-4 sm:px-12 lg:px-16 xl:px-24 bg-white">
                 <div className="w-full max-w-[400px] mx-auto">
                     {/* Mobile Logo */}
                     <div className="lg:hidden mb-10 flex items-center gap-3">

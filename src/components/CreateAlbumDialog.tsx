@@ -34,6 +34,8 @@ export function CreateAlbumDialog({ trigger, onSuccess }: CreateAlbumDialogProps
     const [coverFile, setCoverFile] = useState<File | null>(null);
     const [coverPreview, setCoverPreview] = useState<string | null>(null);
 
+    const [dragActive, setDragActive] = useState(false);
+
     const resetForm = () => {
         setTitle("");
         setDescription("");
@@ -41,12 +43,37 @@ export function CreateAlbumDialog({ trigger, onSuccess }: CreateAlbumDialogProps
         setVisibility("private");
         setCoverFile(null);
         setCoverPreview(null);
+        setDragActive(false);
         setError("");
     };
 
     const handleCoverChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (file) {
+            setCoverFile(file);
+            const reader = new FileReader();
+            reader.onloadend = () => setCoverPreview(reader.result as string);
+            reader.readAsDataURL(file);
+        }
+    };
+
+    const handleDrag = (e: React.DragEvent) => {
+        e.preventDefault();
+        e.stopPropagation();
+        if (e.type === "dragenter" || e.type === "dragover") {
+            setDragActive(true);
+        } else if (e.type === "dragleave") {
+            setDragActive(false);
+        }
+    };
+
+    const handleDrop = (e: React.DragEvent) => {
+        e.preventDefault();
+        e.stopPropagation();
+        setDragActive(false);
+
+        const file = e.dataTransfer.files?.[0];
+        if (file && file.type.startsWith("image/")) {
             setCoverFile(file);
             const reader = new FileReader();
             reader.onloadend = () => setCoverPreview(reader.result as string);
@@ -156,14 +183,24 @@ export function CreateAlbumDialog({ trigger, onSuccess }: CreateAlbumDialogProps
                             onChange={(e) => setTitle(e.target.value)}
                             placeholder="Summer 2024"
                             disabled={loading}
-                            className="h-11 bg-slate-50 border-slate-200 focus:bg-white focus:border-blue-500 focus:ring-blue-500/20 rounded-xl"
+                            className="h-11 bg-slate-50 border-slate-200 focus:bg-white focus:border-blue-500 focus:ring-blue-500/20 rounded-xl placeholder:text-slate-400"
                             autoFocus
                         />
                     </div>
 
                     <div className="space-y-2">
                         <Label className="text-sm font-medium text-slate-700">Cover Image <span className="text-slate-400 font-normal">(optional)</span></Label>
-                        <div className="relative group/cover aspect-[2/1] bg-slate-50 rounded-2xl border-2 border-dashed border-slate-200 hover:border-blue-300 hover:bg-blue-50/30 transition-all overflow-hidden flex flex-col items-center justify-center cursor-pointer">
+                        <div
+                            className={`relative group/cover aspect-[2/1] rounded-2xl border-2 border-dashed transition-all overflow-hidden flex flex-col items-center justify-center cursor-pointer
+                                ${dragActive
+                                    ? "border-blue-500 bg-blue-50 scale-[1.02] shadow-lg shadow-blue-500/10"
+                                    : "border-slate-200 bg-slate-50 hover:border-blue-300 hover:bg-blue-50/30"
+                                }`}
+                            onDragEnter={handleDrag}
+                            onDragLeave={handleDrag}
+                            onDragOver={handleDrag}
+                            onDrop={handleDrop}
+                        >
                             {coverPreview ? (
                                 <>
                                     <img src={coverPreview} alt="Cover preview" className="w-full h-full object-cover" />
@@ -193,10 +230,12 @@ export function CreateAlbumDialog({ trigger, onSuccess }: CreateAlbumDialogProps
                                     className="flex flex-col items-center gap-2 text-slate-400 group-hover/cover:text-blue-500 w-full h-full justify-center"
                                     onClick={() => document.getElementById('cover-upload')?.click()}
                                 >
-                                    <div className="w-10 h-10 rounded-xl bg-white border border-slate-100 shadow-sm flex items-center justify-center group-hover/cover:scale-110 transition-transform">
+                                    <div className={`w-10 h-10 rounded-xl bg-white border border-slate-100 shadow-sm flex items-center justify-center transition-transform ${dragActive ? "scale-110" : "group-hover/cover:scale-110"}`}>
                                         <Camera className="h-5 w-5" />
                                     </div>
-                                    <span className="text-xs font-medium">Upload album cover</span>
+                                    <span className="text-xs font-medium">
+                                        {dragActive ? "Drop image here" : "Upload or drop album cover"}
+                                    </span>
                                 </div>
                             )}
                             <input
@@ -219,7 +258,7 @@ export function CreateAlbumDialog({ trigger, onSuccess }: CreateAlbumDialogProps
                             onChange={(e) => setDescription(e.target.value)}
                             placeholder="A collection of memories"
                             disabled={loading}
-                            className="h-11 bg-slate-50 border-slate-200 focus:bg-white focus:border-blue-500 focus:ring-blue-500/20 rounded-xl"
+                            className="h-11 bg-slate-50 border-slate-200 focus:bg-white focus:border-blue-500 focus:ring-blue-500/20 rounded-xl placeholder:text-slate-400"
                         />
                     </div>
 

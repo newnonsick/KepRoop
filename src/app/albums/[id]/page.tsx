@@ -58,6 +58,19 @@ export default function AlbumDetailPage({ params }: { params: Promise<{ id: stri
     const [uploading, setUploading] = useState(false);
     const [uploadProgress, setUploadProgress] = useState({ current: 0, total: 0, fileName: '', percent: 0 });
     const [deletingImageId, setDeletingImageId] = useState<string | null>(null);
+
+    // Handle Access Denial
+    useEffect(() => {
+        if (albumError) {
+            // Check for 401 (Unauthorized) or 403 (Forbidden)
+            // The fetcher attaches .status to the error object
+            // @ts-ignore
+            if (albumError.status === 401 || albumError.status === 403) {
+                toast.error("You don't have permission to view this album");
+                router.replace("/");
+            }
+        }
+    }, [albumError, router]);
     const [deletingAlbum, setDeletingAlbum] = useState(false);
     const [editingAlbum, setEditingAlbum] = useState(false);
     const [isDragging, setIsDragging] = useState(false);
