@@ -247,7 +247,36 @@ export async function DELETE(request: Request, context: Context) {
         return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
-    await db.delete(albums).where(eq(albums.id, albumId));
+    try {
+        // 1. Fetch all images in album to get S3 keys
+        const albumImages = await db.select({
+            s3Key: images.s3Key,
+            s3KeyOriginal: images.s3KeyOriginal,
+            s3KeyDisplay: images.s3KeyDisplay,
+            s3KeyThumb: images.s3KeyThumb,
+        }).from(images).where(eq(images.albumId, albumId));
 
-    return NextResponse.json({ success: true });
+        // 2. Collect unique keys
+        const keysToDelete = new Set<string>();
+        for (const img of albumImages) {
+            if (img.s3Key) keysToDelete.add(img.s3Key);
+            if (img.s3KeyOriginal) keysToDelete.add(img.s3KeyOriginal);
+            if (img.s3KeyDisplay) keysToDelete.add(img.s3KeyDisplay);
+            if (img.s3KeyThumb) keysToDelete.add(img.s3KeyThumb);
+        }
+
+        // 3. Delete from S3
+        if (keysToDelete.size > 0) {
+            const { deleteS3Objects } = await import("@/lib/s3");
+            await deleteS3Objects(Array.from(keysToDelete));
+        }
+
+        // 4. Delete from DB (Cascade will handle images/members)
+        await db.delete(albums).where(eq(albums.id, albumId));
+
+        return NextResponse.json({ success: true });
+    } catch (error) {
+        console.error("Delete album error:", error);
+        return NextResponse.json({ error: "Failed to delete album" }, { status: 500 });
+    }
 }
