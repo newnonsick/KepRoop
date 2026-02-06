@@ -3,7 +3,7 @@
 import { useEffect, useState, use } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, Lock, Globe, Plus, Upload, Loader2, Image as ImageIcon, Trash2, Star, Download, MoreVertical, LogOut, UserMinus, Camera, X, CheckSquare, Square, XCircle, ArrowUpDown, Folder, FolderOpen, ChevronRight, FolderPlus, Edit2 } from "lucide-react";
+import { ArrowLeft, Lock, Globe, Plus, Upload, Loader2, Image as ImageIcon, Trash2, Star, Download, MoreVertical, LogOut, UserMinus, Camera, X, CheckSquare, Square, XCircle, ArrowUpDown, Folder, FolderOpen, ChevronRight, FolderPlus, Edit2, History } from "lucide-react";
 import useSWR from "swr";
 import { fetcher } from "@/lib/fetcher";
 import { useAuth } from "@/components/providers/AuthProvider";
@@ -18,6 +18,7 @@ import { CreateFolderDialog } from "@/components/CreateFolderDialog";
 import { EditFolderDialog } from "@/components/EditFolderDialog";
 import { DeleteFolderDialog } from "@/components/DeleteFolderDialog";
 import { MoveToFolderDialog } from "@/components/MoveToFolderDialog";
+import { AlbumActivityDialog } from "@/components/AlbumActivityDialog";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogTrigger, DialogTitle } from "@/components/ui/dialog";
 import { VisuallyHidden } from "@radix-ui/react-visually-hidden";
@@ -128,6 +129,7 @@ export default function AlbumDetailPage({ params }: { params: Promise<{ id: stri
     const [trashOpen, setTrashOpen] = useState(false);
     const [deleteAlbumConfirmOpen, setDeleteAlbumConfirmOpen] = useState(false);
     const [leaveAlbumConfirmOpen, setLeaveAlbumConfirmOpen] = useState(false);
+    const [activityLogOpen, setActivityLogOpen] = useState(false);
     const [deleteImageConfirmId, setDeleteImageConfirmId] = useState<string | null>(null);
 
     // Photo Navigation State
@@ -742,6 +744,16 @@ export default function AlbumDetailPage({ params }: { params: Promise<{ id: stri
                             albumOwnerId={album.ownerId}
                         />
 
+                        {/* Activity Log Dialog */}
+                        {isOwner && (
+                            <AlbumActivityDialog
+                                albumId={album.id}
+                                open={activityLogOpen}
+                                onOpenChange={setActivityLogOpen}
+                                trigger={<span className="hidden" />}
+                            />
+                        )}
+
                         {/* Edit Album Dialog */}
                         {isOwner && (
                             <EditAlbumDialog
@@ -794,9 +806,17 @@ export default function AlbumDetailPage({ params }: { params: Promise<{ id: stri
                                 </DropdownMenuTrigger>
                                 <DropdownMenuContent align="end" className="bg-white dark:bg-slate-800 rounded-xl w-48 shadow-lg border-slate-100 dark:border-slate-700 p-1">
                                     {(isOwner || userRole === "editor") && (
-                                        <DropdownMenuItem onClick={() => setTrashOpen(true)} className="cursor-pointer rounded-lg px-3 py-2 text-slate-600 dark:text-slate-300 focus:text-slate-800 dark:focus:text-slate-100 focus:bg-slate-50 dark:focus:bg-slate-700">
-                                            <Trash2 className="mr-2 h-4 w-4" />
-                                            Recycle Bin
+                                        <>
+                                            <DropdownMenuItem onClick={() => setTrashOpen(true)} className="cursor-pointer rounded-lg px-3 py-2 text-slate-600 dark:text-slate-300 focus:text-slate-800 dark:focus:text-slate-100 focus:bg-slate-50 dark:focus:bg-slate-700">
+                                                <Trash2 className="mr-2 h-4 w-4" />
+                                                Recycle Bin
+                                            </DropdownMenuItem>
+                                        </>
+                                    )}
+                                    {isOwner && (
+                                        <DropdownMenuItem onClick={() => setActivityLogOpen(true)} className="cursor-pointer rounded-lg px-3 py-2 text-slate-600 dark:text-slate-300 focus:text-slate-800 dark:focus:text-slate-100 focus:bg-slate-50 dark:focus:bg-slate-700">
+                                            <History className="mr-2 h-4 w-4" />
+                                            Activity Log
                                         </DropdownMenuItem>
                                     )}
 

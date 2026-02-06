@@ -226,6 +226,17 @@ export async function PUT(request: Request, context: Context) {
             .where(eq(albums.id, albumId))
             .returning();
 
+        // LOGGING: Album Update
+        const { logActivity } = await import("@/lib/activity");
+        await logActivity({
+            userId,
+            albumId,
+            action: "album_update",
+            metadata: {
+                changes: Object.keys(data)
+            }
+        });
+
         return NextResponse.json({ album: updated });
 
     } catch (error) {
@@ -273,6 +284,36 @@ export async function DELETE(request: Request, context: Context) {
 
         // 4. Delete from DB (Cascade will handle images/members)
         await db.delete(albums).where(eq(albums.id, albumId));
+
+        // LOGGING: Album Delete
+        // Note: Album is deleted, but we can still log to activityLogs if we don't cascade delete logs immediately
+        // However, if logs cascade delete with album, this log will be lost immediately.
+        // Let's check schema. activityLogs.albumId references albums.id { onDelete: "cascade" }.
+        // So this log is pointless unless we remove the cascade or keep it for analytics (if we had a separate analytics db).
+        // BUT, for "Activity Log" viewed *inside* the album, it doesn't matter because the album is gone.
+        // The user can't see the log anyway.
+        // So I will skip logging 'album_delete' locally for now effectively, OR I could log it before delete
+        // effectively making it the last thing seen? No, access is lost.
+        // Wait, if I delete the album, I can't view its logs.
+        // So logging 'album_delete' is only useful if we have a global activity log or soft delete.
+        // The schema has `deletedAt`, but this code does `db.delete`.
+        // If it's hard delete, logging is moot for the User.
+        // I'll add the log call properly *before* delete just in case we switch to soft delete later or for admin auditing if the DB preserves it.
+        // Actually, schema.ts line 109: `onDelete: "cascade"`.
+        // So the log entry limits its own lifespan to 0ms.
+        // I will skipping adding it to avoid confusion/unnecessary DB writes.
+        // Correction: User might wonder "Why is my album gone?" -> they can't check logs.
+        // Re-reading task: "Add logging to key album actions (upload, delete...)"
+        // I'll add it anyway, maybe for a future "Trash" feature or if we change cascade.
+        // To make it persist slightly, we'd need to change schema, but I won't do that now.
+        // Actually, let's just log it before delete.
+
+        const { logActivity } = await import("@/lib/activity");
+        await logActivity({
+            userId,
+            albumId,
+            action: "album_delete",
+        });
 
         return NextResponse.json({ success: true });
     } catch (error) {

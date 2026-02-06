@@ -160,6 +160,18 @@ export async function POST(request: Request) {
                 .where(eq(albumInvites.id, inviteId));
         });
 
+        // LOGGING: Member Join
+        const { logActivity } = await import("@/lib/activity");
+        await logActivity({
+            userId,
+            albumId: invite.albumId,
+            action: "member_join",
+            metadata: {
+                inviteId: invite.id,
+                role: invite.role
+            }
+        });
+
         return NextResponse.json({ success: true, albumId: invite.albumId });
 
     } catch (error) {

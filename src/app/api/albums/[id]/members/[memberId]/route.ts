@@ -65,6 +65,18 @@ export async function PATCH(request: Request, context: Context) {
             .set({ role })
             .where(and(eq(albumMembers.albumId, albumId), eq(albumMembers.userId, memberId)));
 
+        // LOGGING: Role Change
+        const { logActivity } = await import("@/lib/activity");
+        await logActivity({
+            userId, // The actor (Owner)
+            albumId,
+            action: "member_role_change",
+            metadata: {
+                targetUserId: memberId,
+                newRole: role
+            }
+        });
+
         return NextResponse.json({ success: true });
     } catch (error) {
         if (error instanceof z.ZodError) {
@@ -122,6 +134,18 @@ export async function DELETE(request: Request, context: Context) {
     try {
         await db.delete(albumMembers)
             .where(and(eq(albumMembers.albumId, albumId), eq(albumMembers.userId, memberId)));
+
+        // LOGGING: Member Leave / Remove
+        const { logActivity } = await import("@/lib/activity");
+        await logActivity({
+            userId, // The actor (could be self or owner)
+            albumId,
+            action: "member_leave",
+            metadata: {
+                targetUserId: memberId, // Who left/was removed
+                isKick: !isSelf // true if removed by someone else
+            }
+        });
 
         return NextResponse.json({ success: true });
     } catch (error) {
