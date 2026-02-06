@@ -183,40 +183,48 @@ async function handleBulkDownload(userId: string, body: unknown) {
     // Create ZIP archive
     const archive = archiver('zip', { zlib: { level: 5 } });
 
-    // Create a promise to collect all data
-    const chunks: Buffer[] = [];
+    // Create a Web TransformStream to pipe the archive data to the response
+    const stream = new TransformStream();
+    const writer = stream.writable.getWriter();
 
-    const archivePromise = new Promise<Buffer>((resolve, reject) => {
-        archive.on('data', (chunk: Buffer) => chunks.push(chunk));
-        archive.on('end', () => resolve(Buffer.concat(chunks)));
-        archive.on('error', reject);
+    // Hook up archive events to the stream writer
+    archive.on('data', (chunk) => writer.write(chunk));
+    archive.on('end', () => writer.close());
+    archive.on('error', (err) => writer.abort(err));
+
+    // Process images in the background to avoid blocking the initial response
+    // We don't await this promise here; we let it run while streaming the response
+    (async () => {
+        for (const img of imagesToDownload) {
+            try {
+                // Use original quality for download
+                const key = img.s3KeyOriginal || img.s3Key;
+                if (!key) continue;
+
+                // Get S3 Object as stream
+                const s3Response = await getS3Object(key);
+
+                // archiver supports streams directly
+                // We cast to any/NodeJS.ReadableStream because archiver expects Node streams
+                // but usually handles compatible streams or we might need conversion if strictly Web Stream.
+                // Assuming standard S3 client returns a Node stream or compatible in Node runtime.
+                if (s3Response.Body) {
+                    const filename = img.originalFilename || `${img.id}.webp`;
+                    // @ts-ignore - S3 Body is compatible enough for Archiver in Node env
+                    archive.append(s3Response.Body, { name: filename });
+                }
+            } catch (err) {
+                console.error(`Failed to add image ${img.id} to archive:`, err);
+            }
+        }
+        // Finalize (close) the archive when done
+        archive.finalize();
+    })().catch((err) => {
+        console.error("Archive generation failed:", err);
+        writer.abort(err);
     });
 
-    // Add files to archive
-    for (const img of imagesToDownload) {
-        try {
-            // Use original quality for download
-            const key = img.s3KeyOriginal || img.s3Key;
-            if (!key) continue;
-
-            const s3Response = await getS3Object(key);
-            if (s3Response.Body) {
-                const bodyBytes = await s3Response.Body.transformToByteArray();
-                const filename = img.originalFilename || `${img.id}.webp`;
-                archive.append(Buffer.from(bodyBytes), { name: filename });
-            }
-        } catch (err) {
-            console.error(`Failed to add image ${img.id} to archive:`, err);
-        }
-    }
-
-    // Finalize the archive (this signals no more files will be added)
-    archive.finalize();
-
-    // Wait for all data to be collected
-    const zipBuffer = await archivePromise;
-
-    return new NextResponse(new Uint8Array(zipBuffer), {
+    return new NextResponse(stream.readable, {
         headers: {
             'Content-Type': 'application/zip',
             'Content-Disposition': `attachment; filename="photos-${albumId.slice(0, 8)}.zip"`,

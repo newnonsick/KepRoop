@@ -106,7 +106,8 @@ export default function AlbumDetailPage({ params }: { params: Promise<{ id: stri
 
     const { data: albumData, error: albumError, isLoading: albumLoading, mutate: mutateAlbum } = useSWR(
         `/api/albums/${albumId}?sortBy=${sortBy}&sortDir=${sortDir}`,
-        fetcher
+        fetcher,
+        { revalidateOnFocus: false }
     );
     const { user, isLoading: authLoading } = useAuth();
 
