@@ -376,11 +376,11 @@ export default function AlbumDetailPage({ params }: { params: Promise<{ id: stri
             // 2. Resize Images (Client-side)
             const { resizeImage } = await import("@/lib/client-image");
 
-            // Original (Converted to WebP, Quality 95%, Original Size)
-            // Display (2000px, 90% quality)
-            // Thumb (400px, 70% quality)
+            // Original (Keep original type, Quality 95%, Original Size)
+            // Display (2000px, 90% quality - WebP)
+            // Thumb (400px, 70% quality - WebP)
             const [originalVariant, displayVariant, thumbVariant] = await Promise.all([
-                resizeImage(file, 0, 0.95),
+                resizeImage(file, 0, 0.95, file.type),
                 resizeImage(file, 2000, 0.90),
                 resizeImage(file, 400, 0.70)
             ]);
@@ -388,13 +388,12 @@ export default function AlbumDetailPage({ params }: { params: Promise<{ id: stri
             updateProgress(20);
 
             // 3. Get Presigned URLs (for all 3)
-            // Note: Original is now WebP too
             const urlRes = await fetch("/api/images/upload-url", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
                     filename,
-                    contentType: "image/webp", // We converted original to WebP
+                    contentType: originalVariant.blob.type, // Use actual type (original or webp)
                     albumId
                 }),
             });
@@ -406,10 +405,10 @@ export default function AlbumDetailPage({ params }: { params: Promise<{ id: stri
 
             // 4. Upload to S3 directly (Parallel)
             await Promise.all([
-                // Original (WebP)
+                // Original
                 fetch(urls.original, {
                     method: "PUT",
-                    headers: { "Content-Type": "image/webp" },
+                    headers: { "Content-Type": originalVariant.blob.type },
                     body: originalVariant.blob,
                 }),
                 // Display (WebP)
@@ -435,7 +434,7 @@ export default function AlbumDetailPage({ params }: { params: Promise<{ id: stri
                 body: JSON.stringify({
                     albumId,
                     keys, // { original, display, thumb }
-                    mimeType: "image/webp",
+                    mimeType: originalVariant.blob.type, // Use actual type
                     size: originalVariant.blob.size, // Use the new blob size
                     filename: filename,
                     folderId,
@@ -533,8 +532,28 @@ export default function AlbumDetailPage({ params }: { params: Promise<{ id: stri
         }
     }
 
-    async function downloadImage(url: string, filename: string) {
+    async function downloadImage(imageId: string, fallbackUrl?: string, fallbackFilename?: string) {
         try {
+            // Try to get a fresh URL first
+            let url = fallbackUrl;
+            let filename = fallbackFilename || `photo-${imageId}.webp`;
+
+            try {
+                const res = await fetch(`/api/images/${imageId}/download-url`);
+                if (res.ok) {
+                    const data = await res.json();
+                    url = data.url;
+                    filename = data.filename;
+                }
+            } catch (e) {
+                console.warn("Failed to get fresh download URL, trying fallback", e);
+            }
+
+            if (!url) {
+                toast.error("Could not get download URL");
+                return;
+            }
+
             const res = await fetch(url);
             const blob = await res.blob();
             const blobUrl = window.URL.createObjectURL(blob);
@@ -547,7 +566,11 @@ export default function AlbumDetailPage({ params }: { params: Promise<{ id: stri
             document.body.removeChild(a);
         } catch (err) {
             console.error('Download failed', err);
-            window.open(url, '_blank');
+            if (fallbackUrl) {
+                window.open(fallbackUrl, '_blank');
+            } else {
+                toast.error("Download failed");
+            }
         }
     }
 
@@ -1342,23 +1365,8 @@ export default function AlbumDetailPage({ params }: { params: Promise<{ id: stri
                                             onClick={async (e) => {
                                                 e.stopPropagation();
                                                 const url = image.originalUrl || image.url;
-                                                if (!url) return;
-
-                                                try {
-                                                    const res = await fetch(url);
-                                                    const blob = await res.blob();
-                                                    const blobUrl = window.URL.createObjectURL(blob);
-                                                    const a = document.createElement('a');
-                                                    a.href = blobUrl;
-                                                    a.download = image.originalFilename || `photo-${image.id}.webp`;
-                                                    document.body.appendChild(a);
-                                                    a.click();
-                                                    window.URL.revokeObjectURL(blobUrl);
-                                                    document.body.removeChild(a);
-                                                } catch (err) {
-                                                    console.error('Download failed', err);
-                                                    window.open(url, '_blank');
-                                                }
+                                                // Always call downloadImage even if URL is potentially expired
+                                                await downloadImage(image.id, url, image.originalFilename);
                                             }}
                                             className="absolute bottom-2 right-2 p-2 bg-white/90 dark:bg-slate-800/90 backdrop-blur-sm rounded-lg shadow-lg hover:bg-white dark:hover:bg-slate-800 transition-all opacity-0 group-hover:opacity-100"
                                         >
@@ -1469,7 +1477,7 @@ export default function AlbumDetailPage({ params }: { params: Promise<{ id: stri
                                     e.stopPropagation();
                                     if (selectedImageIndex !== null) {
                                         const img = images[selectedImageIndex];
-                                        downloadImage(img.originalUrl || img.url || '', img.originalFilename || `photo-${img.id}.webp`);
+                                        downloadImage(img.id, img.originalUrl || img.url, img.originalFilename);
                                     }
                                 }}
                                 className="p-3 bg-black/20 hover:bg-black/40 backdrop-blur-md rounded-full text-white transition-all shadow-lg border border-white/20 group"

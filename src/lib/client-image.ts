@@ -11,7 +11,8 @@ export interface ImageVariant {
 export async function resizeImage(
     file: File,
     maxDimension: number,
-    quality: number = 0.9
+    quality: number = 0.9,
+    format: string = 'image/webp'
 ): Promise<ImageVariant> {
     return new Promise((resolve, reject) => {
         const img = new Image();
@@ -56,7 +57,7 @@ export async function resizeImage(
                 } else {
                     reject(new Error("Canvas to Blob failed"));
                 }
-            }, 'image/webp', quality);
+            }, format, quality);
         };
 
         img.onerror = (err) => {
