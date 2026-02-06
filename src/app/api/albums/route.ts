@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { verifyAccessToken } from "@/lib/auth/tokens";
 import { db } from "@/db";
-import { albums, albumMembers, images } from "@/db/schema";
+import { albums, albumMembers, images, favoriteAlbums } from "@/db/schema";
 import { z } from "zod";
 import { eq, desc, sql, and, isNull, inArray, or, ilike, gte, lte, lt, gt } from "drizzle-orm";
 
@@ -66,36 +66,136 @@ export async function GET(request: Request) {
         );
     }
 
-    // First get the album member rows with pagination
-    const memberRows = await db
-        .select({
+    // Handle Favorites Filter
+    // If filter is 'favorites', we query favoriteAlbums table instead of albumMembers
+    // But we still need role info, so we'll likely need to join or fetch separately.
+    // Simpler approach for now: Get favorite IDs, then filter the main query or ...
+    // Wait, the current logic relies heavily on albumMembers for pagination.
+    // If I filter by favorites, I should paginate on favoriteAlbums.createdAt.
+
+    let albumIds: string[] = [];
+    let roleMap: Record<string, string> = {};
+    let joinedAtMap: Record<string, Date> = {};
+    let hasMore = false;
+    let nextCursor = null;
+
+    if (filter === "favorites") {
+        // Favorites Logic
+        const favConditions: any[] = [eq(favoriteAlbums.userId, userId)];
+
+        if (cursor) {
+            const [cursorTime, cursorId] = cursor.split("_");
+            const cursorDate = new Date(cursorTime);
+            favConditions.push(
+                or(
+                    lt(favoriteAlbums.createdAt, cursorDate),
+                    and(
+                        eq(favoriteAlbums.createdAt, cursorDate),
+                        lt(favoriteAlbums.albumId, cursorId)
+                    )
+                )
+            );
+        }
+
+        const favRows = await db
+            .select({
+                albumId: favoriteAlbums.albumId,
+                createdAt: favoriteAlbums.createdAt,
+            })
+            .from(favoriteAlbums)
+            .where(and(...favConditions))
+            .orderBy(desc(favoriteAlbums.createdAt), desc(favoriteAlbums.albumId))
+            .limit(limit + 1);
+
+        hasMore = favRows.length > limit;
+        const paginatedFavs = hasMore ? favRows.slice(0, limit) : favRows;
+
+        if (paginatedFavs.length === 0) {
+            return NextResponse.json({
+                albums: [],
+                nextCursor: null,
+                hasMore: false,
+                total: 0,
+            });
+        }
+
+        albumIds = paginatedFavs.map(f => f.albumId);
+
+        // We still need roles for these albums
+        const members = await db.select({
             albumId: albumMembers.albumId,
             role: albumMembers.role,
-            joinedAt: albumMembers.joinedAt,
-        })
-        .from(albumMembers)
-        .where(and(...memberConditions))
-        .orderBy(desc(albumMembers.joinedAt), desc(albumMembers.albumId))
-        .limit(limit + 1); // Fetch one extra to check hasMore
+            joinedAt: albumMembers.joinedAt
+        }).from(albumMembers)
+            .where(and(
+                eq(albumMembers.userId, userId),
+                inArray(albumMembers.albumId, albumIds)
+            ));
 
-    const hasMore = memberRows.length > limit;
-    const paginatedMembers = hasMore ? memberRows.slice(0, limit) : memberRows;
+        roleMap = Object.fromEntries(members.map(m => [m.albumId, m.role]));
+        joinedAtMap = Object.fromEntries(members.map(m => [m.albumId, m.joinedAt]));
 
-    if (paginatedMembers.length === 0) {
-        return NextResponse.json({
-            albums: [],
-            nextCursor: null,
-            hasMore: false,
-            total: 0,
-        });
+        // For favorites, we use createdAt as the "sort" key for cursor, but map it to 'joinedAt' for frontend compat if needed,
+        // or just rely on albumDate/createdAt for display.
+        // The cursor generation needs to match the fetch strategy.
+        if (hasMore && paginatedFavs.length > 0) {
+            const lastFav = paginatedFavs[paginatedFavs.length - 1];
+            nextCursor = `${lastFav.createdAt.toISOString()}_${lastFav.albumId}`;
+        }
+
+    } else {
+        // Existing "All", "Mine", "Shared" Logic
+        // Role filter
+        if (filter === "mine") {
+            memberConditions.push(eq(albumMembers.role, "owner"));
+        } else if (filter === "shared") {
+            memberConditions.push(sql`${albumMembers.role} != 'owner'`);
+        }
+
+        // First get the album member rows with pagination
+        const memberRows = await db
+            .select({
+                albumId: albumMembers.albumId,
+                role: albumMembers.role,
+                joinedAt: albumMembers.joinedAt,
+            })
+            .from(albumMembers)
+            .where(and(...memberConditions))
+            .orderBy(desc(albumMembers.joinedAt), desc(albumMembers.albumId))
+            .limit(limit + 1); // Fetch one extra to check hasMore
+
+        hasMore = memberRows.length > limit;
+        const paginatedMembers = hasMore ? memberRows.slice(0, limit) : memberRows;
+
+        if (paginatedMembers.length === 0) {
+            return NextResponse.json({
+                albums: [],
+                nextCursor: null,
+                hasMore: false,
+                total: 0,
+            });
+        }
+
+        albumIds = paginatedMembers.map(m => m.albumId);
+        roleMap = Object.fromEntries(paginatedMembers.map(m => [m.albumId, m.role]));
+        joinedAtMap = Object.fromEntries(paginatedMembers.map(m => [m.albumId, m.joinedAt]));
+
+        if (hasMore && paginatedMembers.length > 0) {
+            const lastMember = paginatedMembers[paginatedMembers.length - 1];
+            nextCursor = `${lastMember.joinedAt.toISOString()}_${lastMember.albumId}`;
+        }
     }
-
-    const albumIds = paginatedMembers.map(m => m.albumId);
-    const roleMap = Object.fromEntries(paginatedMembers.map(m => [m.albumId, m.role]));
-    const joinedAtMap = Object.fromEntries(paginatedMembers.map(m => [m.albumId, m.joinedAt]));
 
     // Build album filter conditions
     const albumConditions: any[] = [inArray(albums.id, albumIds)];
+
+    // Fetch user's favorites to mark isFavorite flag
+    const userFavorites = await db
+        .select({ albumId: favoriteAlbums.albumId })
+        .from(favoriteAlbums)
+        .where(eq(favoriteAlbums.userId, userId));
+
+    const favoriteSet = new Set(userFavorites.map(f => f.albumId));
 
     if (visibility === "public" || visibility === "private") {
         albumConditions.push(eq(albums.visibility, visibility));
@@ -191,6 +291,7 @@ export async function GET(request: Request) {
                 imageCount: countsMap[album.id] || 0,
                 albumDate: album.albumDate,
                 joinedAt: joinedAtMap[album.id],
+                isFavorite: favoriteSet.has(album.id),
             };
         })
     );
@@ -222,11 +323,7 @@ export async function GET(request: Request) {
     });
 
     // Generate next cursor
-    let nextCursor = null;
-    if (hasMore && paginatedMembers.length > 0) {
-        const lastMember = paginatedMembers[paginatedMembers.length - 1];
-        nextCursor = `${lastMember.joinedAt.toISOString()}_${lastMember.albumId}`;
-    }
+    // Cursor is already generated inside the conditional blocks above
 
     return NextResponse.json({
         albums: albumsWithCovers,

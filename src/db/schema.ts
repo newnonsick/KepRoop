@@ -137,21 +137,6 @@ export const refreshTokens = pgTable("refresh_tokens", {
 
 
 // Relations
-export const usersRelations = relations(users, ({ many }) => ({
-    albums: many(albums),
-    memberships: many(albumMembers),
-}));
-
-export const albumsRelations = relations(albums, ({ one, many }) => ({
-    owner: one(users, {
-        fields: [albums.ownerId],
-        references: [users.id],
-    }),
-    members: many(albumMembers),
-    images: many(images),
-    invites: many(albumInvites),
-    folders: many(folders),
-}));
 
 export const foldersRelations = relations(folders, ({ one, many }) => ({
     album: one(albums, {
@@ -196,4 +181,43 @@ export const activityLogsRelations = relations(activityLogs, ({ one }) => ({
         fields: [activityLogs.albumId],
         references: [albums.id],
     }),
+}));
+
+// Favorite Albums Table
+export const favoriteAlbums = pgTable("favorite_albums", {
+    userId: uuid("user_id").references(() => users.id, { onDelete: "cascade" }).notNull(),
+    albumId: uuid("album_id").references(() => albums.id, { onDelete: "cascade" }).notNull(),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (table) => ({
+    pk: primaryKey({ columns: [table.userId, table.albumId] }),
+}));
+
+export const favoriteAlbumsRelations = relations(favoriteAlbums, ({ one }) => ({
+    user: one(users, {
+        fields: [favoriteAlbums.userId],
+        references: [users.id],
+    }),
+    album: one(albums, {
+        fields: [favoriteAlbums.albumId],
+        references: [albums.id],
+    }),
+}));
+
+// Relation updates
+export const usersRelations = relations(users, ({ many }) => ({
+    albums: many(albums),
+    memberships: many(albumMembers),
+    favorites: many(favoriteAlbums),
+}));
+
+export const albumsRelations = relations(albums, ({ one, many }) => ({
+    owner: one(users, {
+        fields: [albums.ownerId],
+        references: [users.id],
+    }),
+    members: many(albumMembers),
+    images: many(images),
+    invites: many(albumInvites),
+    folders: many(folders),
+    favoritedBy: many(favoriteAlbums),
 }));

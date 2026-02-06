@@ -7,6 +7,8 @@ import { ArrowLeft, Lock, Globe, Plus, Upload, Loader2, Image as ImageIcon, Tras
 import useSWR from "swr";
 import { fetcher } from "@/lib/fetcher";
 import { useAuth } from "@/components/providers/AuthProvider";
+import { useAlbumDetailStore } from "@/stores/useAlbumDetailStore";
+import { DragOverlay } from "@/components/DragOverlay";
 
 import { DashboardNavbar } from "@/components/DashboardNavbar";
 import { ShareAlbumDialog } from "@/components/ShareAlbumDialog";
@@ -74,15 +76,32 @@ export default function AlbumDetailPage({ params }: { params: Promise<{ id: stri
     const resolvedParams = use(params);
     const albumId = resolvedParams.id;
 
-    // Folder navigation state
-    const [currentFolderId, setCurrentFolderId] = useState<string | null>(null);
+    // Use Global Store
+    const store = useAlbumDetailStore();
+
+    const {
+        currentFolderId, setCurrentFolderId,
+        sortBy, setSort,
+        selectMode, selectedIds,
+        toggleSelectMode, toggleSelection: toggleImageSelection, selectAll: selectAllStore, deselectAll,
+        bulkOperating, setBulkOperating,
+        uploading, setUploading,
+        uploadProgress, setUploadProgress,
+        reset
+    } = store;
+
+    const sortDir = store.sortDir;
+
+    // Local UI State
     const [editingFolder, setEditingFolder] = useState<Folder | null>(null);
     const [deletingFolder, setDeletingFolder] = useState<Folder | null>(null);
     const [movingPhotosOpen, setMovingPhotosOpen] = useState(false);
 
-    // Sorting state
-    const [sortBy, setSortBy] = useState<'createdAt' | 'dateTaken'>('createdAt');
-    const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc');
+    // Reset store on mount/unmount and when albumId changes
+    useEffect(() => {
+        reset();
+        return () => reset();
+    }, [albumId, reset]);
 
     const { data: albumData, error: albumError, isLoading: albumLoading, mutate: mutateAlbum } = useSWR(
         `/api/albums/${albumId}?sortBy=${sortBy}&sortDir=${sortDir}`,
@@ -90,8 +109,6 @@ export default function AlbumDetailPage({ params }: { params: Promise<{ id: stri
     );
     const { user, isLoading: authLoading } = useAuth();
 
-    const [uploading, setUploading] = useState(false);
-    const [uploadProgress, setUploadProgress] = useState({ current: 0, total: 0, fileName: '', percent: 0 });
     const [deletingImageId, setDeletingImageId] = useState<string | null>(null);
 
     // Handle Access Denial & Race Conditions
@@ -107,7 +124,7 @@ export default function AlbumDetailPage({ params }: { params: Promise<{ id: stri
     }, [user, albumError, mutateAlbum]);
     const [deletingAlbum, setDeletingAlbum] = useState(false);
     const [editingAlbum, setEditingAlbum] = useState(false);
-    const [isDragging, setIsDragging] = useState(false);
+
     const [trashOpen, setTrashOpen] = useState(false);
     const [deleteAlbumConfirmOpen, setDeleteAlbumConfirmOpen] = useState(false);
     const [leaveAlbumConfirmOpen, setLeaveAlbumConfirmOpen] = useState(false);
@@ -117,9 +134,7 @@ export default function AlbumDetailPage({ params }: { params: Promise<{ id: stri
     const [selectedImageIndex, setSelectedImageIndex] = useState<number | null>(null);
 
     // Multi-select state for bulk operations
-    const [selectMode, setSelectMode] = useState(false);
-    const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
-    const [bulkOperating, setBulkOperating] = useState(false);
+
 
     const folders = (albumData?.album?.folders || []) as Folder[];
 
@@ -164,40 +179,7 @@ export default function AlbumDetailPage({ params }: { params: Promise<{ id: stri
         return () => window.removeEventListener("keydown", handleKeyDown);
     }, [selectedImageIndex, images.length]);
 
-    // --- Drag and Drop for Uploads (Page Level) ---
-    useEffect(() => {
-        const handleWindowDragOver = (e: DragEvent) => {
-            e.preventDefault();
-            // content-type check to distinguishing between files and other drag types
-            if (e.dataTransfer && e.dataTransfer.types.includes("Files")) {
-                setIsDragging(true);
-            }
-        };
 
-        const handleWindowDragLeave = (e: DragEvent) => {
-            e.preventDefault();
-            // Simple check: if leaving window or mouse released
-            if (e.clientX === 0 && e.clientY === 0) {
-                setIsDragging(false);
-            }
-        };
-
-        const handleWindowDrop = (e: DragEvent) => {
-            e.preventDefault();
-            setIsDragging(false);
-            // Drop is handled by the main div's onDrop handler to prevent duplicates
-        };
-
-        window.addEventListener('dragover', handleWindowDragOver);
-        window.addEventListener('dragleave', handleWindowDragLeave);
-        window.addEventListener('drop', handleWindowDrop);
-
-        return () => {
-            window.removeEventListener('dragover', handleWindowDragOver);
-            window.removeEventListener('dragleave', handleWindowDragLeave);
-            window.removeEventListener('drop', handleWindowDrop);
-        };
-    }, []);
 
 
     async function handleDeleteAlbum() {
@@ -244,27 +226,11 @@ export default function AlbumDetailPage({ params }: { params: Promise<{ id: stri
     }
 
     // Bulk operation handlers
-    const toggleSelectMode = () => {
-        setSelectMode(!selectMode);
-        setSelectedIds(new Set());
-    };
+    // Bulk operation handlers - using store actions directly
 
-    const toggleImageSelection = (imageId: string) => {
-        const newSelected = new Set(selectedIds);
-        if (newSelected.has(imageId)) {
-            newSelected.delete(imageId);
-        } else {
-            newSelected.add(imageId);
-        }
-        setSelectedIds(newSelected);
-    };
-
+    // Wrapper for selectAll to pass image IDs
     const selectAll = () => {
-        setSelectedIds(new Set(images.map((img: Image) => img.id)));
-    };
-
-    const deselectAll = () => {
-        setSelectedIds(new Set());
+        selectAllStore(images.map((img: Image) => img.id));
     };
 
     async function handleBulkDelete() {
@@ -285,8 +251,8 @@ export default function AlbumDetailPage({ params }: { params: Promise<{ id: stri
             if (res.ok) {
                 const data = await res.json();
                 toast.success(`Deleted ${data.deletedCount} photos`);
-                setSelectedIds(new Set());
-                setSelectMode(false);
+                deselectAll();
+                toggleSelectMode();
                 refreshAlbum();
             } else {
                 const error = await res.json();
@@ -476,27 +442,6 @@ export default function AlbumDetailPage({ params }: { params: Promise<{ id: stri
         if (!e.target.files?.length) return;
         handleFilesUpload(e.target.files);
         e.target.value = ''; // Reset input
-    }
-
-    function handleDragOver(e: React.DragEvent) {
-        e.preventDefault();
-        if (canEdit) setIsDragging(true);
-    }
-
-    function handleDragLeave(e: React.DragEvent) {
-        e.preventDefault();
-        setIsDragging(false);
-    }
-
-    function handleDrop(e: React.DragEvent) {
-        e.preventDefault();
-        setIsDragging(false);
-        if (!canEdit || uploading) return;
-
-        const files = e.dataTransfer.files;
-        if (files.length > 0) {
-            handleFilesUpload(files);
-        }
     }
 
     async function handleDeleteImage(imageId: string) {
@@ -749,22 +694,8 @@ export default function AlbumDetailPage({ params }: { params: Promise<{ id: stri
 
 
     return (
-        <div
-            className="min-h-screen bg-gradient-to-b from-slate-50 to-blue-50/30 dark:from-slate-950 dark:to-slate-900 relative"
-            onDragOver={handleDragOver}
-            onDragLeave={handleDragLeave}
-            onDrop={handleDrop}
-        >
-            {/* Drag overlay */}
-            {isDragging && canEdit && (
-                <div className="fixed inset-0 bg-blue-500/10 backdrop-blur-sm z-50 flex items-center justify-center pointer-events-none">
-                    <div className="bg-white dark:bg-slate-800 rounded-3xl p-12 shadow-2xl border-2 border-dashed border-blue-400 dark:border-blue-500 text-center">
-                        <Upload className="h-16 w-16 text-blue-500 mx-auto mb-4" />
-                        <p className="text-xl font-semibold text-slate-800 dark:text-slate-100">Drop photos here</p>
-                        <p className="text-slate-500 dark:text-slate-400 mt-1">Release to upload</p>
-                    </div>
-                </div>
-            )}
+        <div className="min-h-screen bg-gradient-to-b from-slate-50 to-blue-50/30 dark:from-slate-950 dark:to-slate-900 relative">
+            <DragOverlay canEdit={canEdit} onUpload={handleFilesUpload} />
 
             <DashboardNavbar />
 
@@ -1111,8 +1042,8 @@ export default function AlbumDetailPage({ params }: { params: Promise<{ id: stri
                         open={movingPhotosOpen}
                         onOpenChange={setMovingPhotosOpen}
                         onSuccess={() => {
-                            setSelectedIds(new Set());
-                            setSelectMode(false);
+                            deselectAll();
+                            if (selectMode) toggleSelectMode();
                             refreshAlbum();
                         }}
                     />
@@ -1147,7 +1078,7 @@ export default function AlbumDetailPage({ params }: { params: Promise<{ id: stri
                                     </DropdownMenuTrigger>
                                     <DropdownMenuContent align="start" className="w-52 rounded-xl p-1 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-lg">
                                         <DropdownMenuItem
-                                            onClick={() => { setSortBy('createdAt'); setSortDir('desc'); }}
+                                            onClick={() => setSort('createdAt', 'desc')}
                                             className={`rounded-lg cursor-pointer ${sortBy === 'createdAt' && sortDir === 'desc' ? 'bg-blue-50 dark:bg-blue-900/40 text-blue-600 dark:text-blue-400' : ''}`}
                                         >
                                             <span className="flex items-center gap-2">
@@ -1156,7 +1087,7 @@ export default function AlbumDetailPage({ params }: { params: Promise<{ id: stri
                                             </span>
                                         </DropdownMenuItem>
                                         <DropdownMenuItem
-                                            onClick={() => { setSortBy('createdAt'); setSortDir('asc'); }}
+                                            onClick={() => setSort('createdAt', 'asc')}
                                             className={`rounded-lg cursor-pointer ${sortBy === 'createdAt' && sortDir === 'asc' ? 'bg-blue-50 dark:bg-blue-900/40 text-blue-600 dark:text-blue-400' : ''}`}
                                         >
                                             <span className="flex items-center gap-2">
@@ -1166,7 +1097,7 @@ export default function AlbumDetailPage({ params }: { params: Promise<{ id: stri
                                         </DropdownMenuItem>
                                         <DropdownMenuSeparator className="my-1" />
                                         <DropdownMenuItem
-                                            onClick={() => { setSortBy('dateTaken'); setSortDir('desc'); }}
+                                            onClick={() => setSort('dateTaken', 'desc')}
                                             className={`rounded-lg cursor-pointer ${sortBy === 'dateTaken' && sortDir === 'desc' ? 'bg-blue-50 dark:bg-blue-900/40 text-blue-600 dark:text-blue-400' : ''}`}
                                         >
                                             <span className="flex items-center gap-2">
@@ -1176,7 +1107,7 @@ export default function AlbumDetailPage({ params }: { params: Promise<{ id: stri
                                             </span>
                                         </DropdownMenuItem>
                                         <DropdownMenuItem
-                                            onClick={() => { setSortBy('dateTaken'); setSortDir('asc'); }}
+                                            onClick={() => setSort('dateTaken', 'asc')}
                                             className={`rounded-lg cursor-pointer ${sortBy === 'dateTaken' && sortDir === 'asc' ? 'bg-blue-50 dark:bg-blue-900/40 text-blue-600 dark:text-blue-400' : ''}`}
                                         >
                                             <span className="flex items-center gap-2">
@@ -1379,8 +1310,8 @@ export default function AlbumDetailPage({ params }: { params: Promise<{ id: stri
                                         <button
                                             onClick={(e) => {
                                                 e.stopPropagation();
-                                                setSelectMode(true);
-                                                setSelectedIds(new Set([image.id]));
+                                                if (!selectMode) toggleSelectMode();
+                                                toggleImageSelection(image.id);
                                             }}
                                             className="absolute top-2 left-2 p-2 bg-white/90 dark:bg-slate-800/90 backdrop-blur-sm rounded-lg shadow-lg hover:bg-white dark:hover:bg-slate-800 transition-all opacity-0 group-hover:opacity-100"
                                         >

@@ -1,16 +1,16 @@
 "use client";
 
-import { useEffect, useState, useCallback, useMemo } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Plus, Lock, Globe, Image as ImageIcon, Menu, Search, X, Calendar, ChevronDown, ChevronUp, Filter, LayoutGrid, Loader2, ArrowUpDown, ArrowDown, ArrowUp, Check } from "lucide-react";
+import { Plus, Lock, Globe, Image as ImageIcon, Menu, Search, X, Calendar, ChevronDown, ChevronUp, Filter, LayoutGrid, Loader2, ArrowUpDown, ArrowDown, ArrowUp, Check, Heart } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
 import { cn } from "@/lib/utils";
 import { DashboardNavbar } from "@/components/DashboardNavbar";
 import { CreateAlbumDialog } from "@/components/CreateAlbumDialog";
-import { DashboardSidebar, type FilterType } from "@/components/DashboardSidebar";
+import { DashboardSidebar } from "@/components/DashboardSidebar";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { AlbumCover } from "@/components/AlbumCover";
@@ -22,126 +22,45 @@ import {
     DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 
-interface Album {
-    id: string;
-    title: string;
-    description?: string;
-    visibility: "public" | "private";
-    taskRole: "owner" | "editor" | "viewer";
-    coverImageUrl?: string;
-    previewImageUrls?: string[];
-    imageCount?: number;
-    albumDate: string;
-}
-
-import useSWR from "swr";
-import { fetcher } from "@/lib/fetcher";
 import { useAuth } from "@/components/providers/AuthProvider";
-
-// Build API URL with query params
-function buildAlbumsUrl(params: {
-    cursor?: string | null;
-    filter: FilterType;
-    visibility: "all" | "public" | "private";
-    startDate: string;
-    endDate: string;
-    search: string;
-    sortBy: string;
-    sortDir: string;
-}) {
-    // Use a dummy base for URL construction to avoid 'window is not defined' on server
-    const url = new URL("/api/albums", "http://base.url");
-
-    if (params.cursor) url.searchParams.set("cursor", params.cursor);
-    if (params.filter !== "all") url.searchParams.set("filter", params.filter);
-    if (params.visibility !== "all") url.searchParams.set("visibility", params.visibility);
-    if (params.startDate) url.searchParams.set("startDate", params.startDate);
-    if (params.endDate) url.searchParams.set("endDate", params.endDate);
-    if (params.search) url.searchParams.set("search", params.search);
-    if (params.sortBy !== "joinedAt") url.searchParams.set("sortBy", params.sortBy);
-    if (params.sortDir !== "desc") url.searchParams.set("sortDir", params.sortDir);
-
-    // Return path + query string (relative URL)
-    return url.pathname + url.search;
-}
+import { useAlbumStore, type Album } from "@/stores/useAlbumStore";
 
 export default function DashboardPage() {
     const { user } = useAuth();
-    const [filter, setFilter] = useState<FilterType>("all");
-    const [searchQuery, setSearchQuery] = useState("");
-    const [startDate, setStartDate] = useState("");
-    const [endDate, setEndDate] = useState("");
-    const [visibilityFilter, setVisibilityFilter] = useState<"all" | "public" | "private">("all");
-    const [sortBy, setSortBy] = useState<"albumDate" | "createdAt">("albumDate");
-    const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
-    const [showFilters, setShowFilters] = useState(false);
-    const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
     const router = useRouter();
 
-    // Pagination state
-    const [albums, setAlbums] = useState<Album[]>([]);
-    const [cursor, setCursor] = useState<string | null>(null);
-    const [hasMore, setHasMore] = useState(false);
-    const [isLoadingMore, setIsLoadingMore] = useState(false);
-
-    // Build URL for initial fetch (no cursor)
-    const initialUrl = buildAlbumsUrl({
-        cursor: null,
+    // Zustand Store
+    const {
+        albums,
         filter,
-        visibility: visibilityFilter,
+        searchQuery,
+        visibilityFilter,
         startDate,
         endDate,
-        search: searchQuery,
         sortBy,
         sortDir,
-    });
+        hasMore,
+        isLoading,
+        isLoadingMore,
+        setFilter,
+        setSearchQuery,
+        setVisibilityFilter,
+        setDateRange,
+        setSort,
+        fetchAlbums,
+        loadMore,
+        refreshAlbums,
+        toggleFavorite
+    } = useAlbumStore();
 
-    const { data, error, isLoading: loading, mutate } = useSWR(initialUrl, fetcher);
+    // Local UI State
+    const [showFilters, setShowFilters] = useState(false);
+    const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
 
-    // Update albums when data changes (initial load or filter change)
+    // Initial Fetch
     useEffect(() => {
-        if (data) {
-            setAlbums(data.albums || []);
-            setCursor(data.nextCursor || null);
-            setHasMore(data.hasMore || false);
-        }
-    }, [data]);
-
-    // Note: We don't reset albums on filter change anymore
-    // SWR automatically handles refetching when initialUrl changes
-    // The loading state from SWR will show the skeleton
-
-    const loadMore = async () => {
-        if (!cursor || isLoadingMore) return;
-
-        setIsLoadingMore(true);
-        try {
-            const url = buildAlbumsUrl({
-                cursor,
-                filter,
-                visibility: visibilityFilter,
-                startDate,
-                endDate,
-                search: searchQuery,
-                sortBy,
-                sortDir,
-            });
-            const res = await fetch(url);
-            const moreData = await res.json();
-
-            if (moreData.albums) {
-                setAlbums(prev => [...prev, ...moreData.albums]);
-                setCursor(moreData.nextCursor || null);
-                setHasMore(moreData.hasMore || false);
-            }
-        } catch (err) {
-            console.error("Failed to load more albums:", err);
-        } finally {
-            setIsLoadingMore(false);
-        }
-    };
-
-    const refreshAlbums = () => mutate();
+        fetchAlbums();
+    }, []);
 
     const formatLocalDate = (dateString: string) => {
         return new Date(dateString).toLocaleDateString(undefined, {
@@ -151,15 +70,14 @@ export default function DashboardPage() {
         });
     };
 
-    // Albums are now server-filtered, no client filtering needed
-    const filteredAlbums = albums;
-
     const getPageTitle = () => {
         switch (filter) {
             case "mine":
                 return "My Albums";
             case "shared":
                 return "Shared with me";
+            case "favorites":
+                return "My Favorites";
             default:
                 return "All Albums";
         }
@@ -172,8 +90,6 @@ export default function DashboardPage() {
             <div className="flex">
                 {/* Desktop Sidebar */}
                 <DashboardSidebar
-                    currentFilter={filter}
-                    onFilterChange={setFilter}
                     onAlbumCreated={refreshAlbums}
                     className="hidden lg:flex"
                 />
@@ -192,11 +108,6 @@ export default function DashboardPage() {
                                     </SheetTrigger>
                                     <SheetContent side="left" className="p-0 w-72 dark:bg-slate-900 dark:border-slate-800">
                                         <DashboardSidebar
-                                            currentFilter={filter}
-                                            onFilterChange={(f) => {
-                                                setFilter(f);
-                                                setIsMobileSidebarOpen(false);
-                                            }}
                                             onAlbumCreated={() => {
                                                 refreshAlbums();
                                                 setIsMobileSidebarOpen(false);
@@ -209,10 +120,10 @@ export default function DashboardPage() {
                                 <div>
                                     <h1 className="text-2xl font-semibold text-slate-800 dark:text-slate-100">{getPageTitle()}</h1>
                                     <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
-                                        {(loading || (!loading && data?.albums?.length && albums.length === 0)) ? "Loading albums..." : (
-                                            filteredAlbums.length === 0
+                                        {(isLoading || (!isLoading && albums.length === 0 && hasMore)) ? "Loading albums..." : (
+                                            albums.length === 0
                                                 ? (searchQuery ? "No matches found" : "No albums found")
-                                                : `${filteredAlbums.length} album${filteredAlbums.length === 1 ? "" : "s"}`
+                                                : `${albums.length} album${albums.length === 1 ? "" : "s"}`
                                         )}
                                     </p>
                                 </div>
@@ -254,7 +165,7 @@ export default function DashboardPage() {
                                         </DropdownMenuTrigger>
                                         <DropdownMenuContent align="end" className="w-48 bg-white dark:bg-slate-800 rounded-2xl shadow-xl border-slate-100 dark:border-slate-700 p-1">
                                             <DropdownMenuItem
-                                                onClick={() => { setSortBy("albumDate"); setSortDir("desc"); }}
+                                                onClick={() => setSort("albumDate", "desc")}
                                                 className={cn(
                                                     "rounded-xl px-3 py-2 cursor-pointer dark:text-slate-200",
                                                     sortBy === "albumDate" && sortDir === "desc"
@@ -267,7 +178,7 @@ export default function DashboardPage() {
                                                 {sortBy === "albumDate" && sortDir === "desc" && <Check className="ml-auto h-4 w-4 text-blue-500" />}
                                             </DropdownMenuItem>
                                             <DropdownMenuItem
-                                                onClick={() => { setSortBy("albumDate"); setSortDir("asc"); }}
+                                                onClick={() => setSort("albumDate", "asc")}
                                                 className={cn(
                                                     "rounded-xl px-3 py-2 cursor-pointer dark:text-slate-200",
                                                     sortBy === "albumDate" && sortDir === "asc"
@@ -280,7 +191,7 @@ export default function DashboardPage() {
                                                 {sortBy === "albumDate" && sortDir === "asc" && <Check className="ml-auto h-4 w-4 text-blue-500" />}
                                             </DropdownMenuItem>
                                             <DropdownMenuItem
-                                                onClick={() => { setSortBy("createdAt"); setSortDir("desc"); }}
+                                                onClick={() => setSort("createdAt", "desc")}
                                                 className={cn(
                                                     "rounded-xl px-3 py-2 cursor-pointer dark:text-slate-200",
                                                     sortBy === "createdAt" && sortDir === "desc"
@@ -293,7 +204,7 @@ export default function DashboardPage() {
                                                 {sortBy === "createdAt" && sortDir === "desc" && <Check className="ml-auto h-4 w-4 text-blue-500" />}
                                             </DropdownMenuItem>
                                             <DropdownMenuItem
-                                                onClick={() => { setSortBy("createdAt"); setSortDir("asc"); }}
+                                                onClick={() => setSort("createdAt", "asc")}
                                                 className={cn(
                                                     "rounded-xl px-3 py-2 cursor-pointer dark:text-slate-200",
                                                     sortBy === "createdAt" && sortDir === "asc"
@@ -368,19 +279,19 @@ export default function DashboardPage() {
                                             <input
                                                 type="date"
                                                 value={startDate}
-                                                onChange={(e) => setStartDate(e.target.value)}
+                                                onChange={(e) => setDateRange(e.target.value, endDate)}
                                                 className="bg-transparent border-none text-sm text-slate-600 dark:text-slate-300 focus:ring-0 p-0 w-28 font-medium"
                                             />
                                             <span className="text-slate-300 font-light">to</span>
                                             <input
                                                 type="date"
                                                 value={endDate}
-                                                onChange={(e) => setEndDate(e.target.value)}
+                                                onChange={(e) => setDateRange(startDate, e.target.value)}
                                                 className="bg-transparent border-none text-sm text-slate-600 dark:text-slate-300 focus:ring-0 p-0 w-28 font-medium"
                                             />
                                             {(startDate || endDate) && (
                                                 <button
-                                                    onClick={() => { setStartDate(""); setEndDate(""); }}
+                                                    onClick={() => setDateRange("", "")}
                                                     className="p-1 hover:bg-slate-200 rounded-full transition-colors"
                                                 >
                                                     <X className="h-3 w-3 text-slate-400" />
@@ -393,8 +304,7 @@ export default function DashboardPage() {
                                             onClick={() => {
                                                 const start = new Date();
                                                 start.setDate(start.getDate() - 7);
-                                                setStartDate(start.toISOString().split('T')[0]);
-                                                setEndDate(new Date().toISOString().split('T')[0]);
+                                                setDateRange(start.toISOString().split('T')[0], new Date().toISOString().split('T')[0]);
                                             }}
                                             className="h-8 px-2 rounded-xl text-xs font-semibold text-slate-500 hover:text-blue-600 hover:bg-blue-50"
                                         >
@@ -406,8 +316,7 @@ export default function DashboardPage() {
                                             onClick={() => {
                                                 const start = new Date();
                                                 start.setDate(start.getDate() - 30);
-                                                setStartDate(start.toISOString().split('T')[0]);
-                                                setEndDate(new Date().toISOString().split('T')[0]);
+                                                setDateRange(start.toISOString().split('T')[0], new Date().toISOString().split('T')[0]);
                                             }}
                                             className="h-8 px-2 rounded-xl text-xs font-semibold text-slate-500 hover:text-blue-600 hover:bg-blue-50"
                                         >
@@ -439,7 +348,7 @@ export default function DashboardPage() {
                             {(startDate || endDate) && (
                                 <div className="flex items-center gap-1.5 pl-3 pr-1 py-1 bg-white dark:bg-slate-800 border border-blue-100 dark:border-blue-800 rounded-full text-xs font-semibold text-blue-600 dark:text-blue-400 shadow-sm animate-in fade-in zoom-in duration-300">
                                     <span>Date: {startDate || '...'} to {endDate || '...'}</span>
-                                    <button onClick={() => { setStartDate(""); setEndDate(""); }} className="p-1 hover:bg-blue-50 rounded-full transition-colors">
+                                    <button onClick={() => setDateRange("", "")} className="p-1 hover:bg-blue-50 rounded-full transition-colors">
                                         <X className="h-3 w-3" />
                                     </button>
                                 </div>
@@ -480,7 +389,7 @@ export default function DashboardPage() {
                                     </DropdownMenuTrigger>
                                     <DropdownMenuContent align="end" className="w-48 bg-white dark:bg-slate-800 rounded-2xl shadow-xl border-slate-100 dark:border-slate-700 p-1">
                                         <DropdownMenuItem
-                                            onClick={() => { setSortBy("albumDate"); setSortDir("desc"); }}
+                                            onClick={() => setSort("albumDate", "desc")}
                                             className={cn(
                                                 "rounded-xl px-3 py-2 cursor-pointer dark:text-slate-200",
                                                 sortBy === "albumDate" && sortDir === "desc"
@@ -493,7 +402,7 @@ export default function DashboardPage() {
                                             {sortBy === "albumDate" && sortDir === "desc" && <Check className="ml-auto h-4 w-4 text-blue-500" />}
                                         </DropdownMenuItem>
                                         <DropdownMenuItem
-                                            onClick={() => { setSortBy("albumDate"); setSortDir("asc"); }}
+                                            onClick={() => setSort("albumDate", "asc")}
                                             className={cn(
                                                 "rounded-xl px-3 py-2 cursor-pointer dark:text-slate-200",
                                                 sortBy === "albumDate" && sortDir === "asc"
@@ -506,7 +415,7 @@ export default function DashboardPage() {
                                             {sortBy === "albumDate" && sortDir === "asc" && <Check className="ml-auto h-4 w-4 text-blue-500" />}
                                         </DropdownMenuItem>
                                         <DropdownMenuItem
-                                            onClick={() => { setSortBy("createdAt"); setSortDir("desc"); }}
+                                            onClick={() => setSort("createdAt", "desc")}
                                             className={cn(
                                                 "rounded-xl px-3 py-2 cursor-pointer dark:text-slate-200",
                                                 sortBy === "createdAt" && sortDir === "desc"
@@ -519,7 +428,7 @@ export default function DashboardPage() {
                                             {sortBy === "createdAt" && sortDir === "desc" && <Check className="ml-auto h-4 w-4 text-blue-500" />}
                                         </DropdownMenuItem>
                                         <DropdownMenuItem
-                                            onClick={() => { setSortBy("createdAt"); setSortDir("asc"); }}
+                                            onClick={() => setSort("createdAt", "asc")}
                                             className={cn(
                                                 "rounded-xl px-3 py-2 cursor-pointer dark:text-slate-200",
                                                 sortBy === "createdAt" && sortDir === "asc"
@@ -579,19 +488,19 @@ export default function DashboardPage() {
                                             <input
                                                 type="date"
                                                 value={startDate}
-                                                onChange={(e) => setStartDate(e.target.value)}
+                                                onChange={(e) => setDateRange(e.target.value, endDate)}
                                                 className="bg-transparent border-none text-[13px] text-slate-600 focus:ring-0 p-0 flex-1 min-w-0 font-medium"
                                             />
                                             <span className="text-slate-300 font-light">/</span>
                                             <input
                                                 type="date"
                                                 value={endDate}
-                                                onChange={(e) => setEndDate(e.target.value)}
+                                                onChange={(e) => setDateRange(startDate, e.target.value)}
                                                 className="bg-transparent border-none text-[13px] text-slate-600 focus:ring-0 p-0 flex-1 min-w-0 font-medium"
                                             />
                                             {(startDate || endDate) && (
                                                 <button
-                                                    onClick={() => { setStartDate(""); setEndDate(""); }}
+                                                    onClick={() => setDateRange("", "")}
                                                     className="p-1 hover:bg-slate-200 rounded-full transition-colors"
                                                 >
                                                     <X className="h-3 w-3 text-slate-400" />
@@ -620,7 +529,7 @@ export default function DashboardPage() {
                                     {(startDate || endDate) && (
                                         <div className="flex items-center gap-1 pl-2 pr-1 py-1 bg-blue-50 border border-blue-100 rounded-full text-[10px] font-bold text-blue-600">
                                             <span>Date: {startDate || '...'} - {endDate || '...'}</span>
-                                            <X className="h-2 w-2 cursor-pointer" onClick={() => { setStartDate(""); setEndDate(""); }} />
+                                            <X className="h-2 w-2 cursor-pointer" onClick={() => setDateRange("", "")} />
                                         </div>
                                     )}
                                 </div>
@@ -629,7 +538,7 @@ export default function DashboardPage() {
 
                         {/* Album Grid */}
                         {
-                            (loading || (!loading && data?.albums?.length && albums.length === 0)) ? (
+                            isLoading && albums.length === 0 ? (
                                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-6">
                                     {[...Array(6)].map((_, i) => (
                                         <div key={i} className="bg-white dark:bg-slate-800 rounded-3xl overflow-hidden shadow-sm border border-slate-100 dark:border-slate-700">
@@ -641,7 +550,7 @@ export default function DashboardPage() {
                                         </div>
                                     ))}
                                 </div>
-                            ) : filteredAlbums.length === 0 ? (
+                            ) : albums.length === 0 ? (
                                 <div className="flex flex-col items-center justify-center py-20 bg-white dark:bg-slate-800 rounded-[2rem] border border-slate-100 dark:border-slate-700 shadow-sm border-dashed">
                                     <div className="w-20 h-20 bg-blue-50 rounded-2xl flex items-center justify-center mb-6">
                                         <ImageIcon className="h-10 w-10 text-blue-400" strokeWidth={1.5} />
@@ -682,7 +591,7 @@ export default function DashboardPage() {
                             ) : (
                                 <>
                                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-6">
-                                        {filteredAlbums.map((album: Album) => (
+                                        {albums.map((album: Album) => (
                                             <Link
                                                 href={`/albums/${album.id}`}
                                                 key={album.id}
@@ -696,6 +605,23 @@ export default function DashboardPage() {
                                                         imageCount={album.imageCount}
                                                         title={album.title}
                                                     />
+
+                                                    {/* Favorite Button */}
+                                                    <button
+                                                        onClick={(e) => {
+                                                            e.preventDefault();
+                                                            e.stopPropagation();
+                                                            toggleFavorite(album.id);
+                                                        }}
+                                                        className="absolute top-4 right-4 p-2 rounded-full bg-white/90 backdrop-blur-md shadow-sm border border-white/50 hover:bg-white transition-all z-10 group/fav"
+                                                    >
+                                                        <Heart
+                                                            className={cn(
+                                                                "h-4 w-4 transition-colors",
+                                                                album.isFavorite ? "fill-red-500 text-red-500" : "text-slate-400 group-hover/fav:text-red-500"
+                                                            )}
+                                                        />
+                                                    </button>
 
                                                     {/* Visibility Badge */}
                                                     <div className="absolute top-4 left-4">

@@ -1,25 +1,22 @@
 "use client";
 
-import { LayoutGrid, User, Users, Plus } from "lucide-react";
+import { LayoutGrid, User, Users, Plus, Heart } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { CreateAlbumDialog } from "@/components/CreateAlbumDialog";
 
-export type FilterType = "all" | "mine" | "shared";
+import { useAlbumStore } from "@/stores/useAlbumStore";
 
 interface DashboardSidebarProps {
-    currentFilter: FilterType;
-    onFilterChange: (filter: FilterType) => void;
     onAlbumCreated: () => void;
     className?: string;
 }
 
 export function DashboardSidebar({
-    currentFilter,
-    onFilterChange,
     onAlbumCreated,
     className,
 }: DashboardSidebarProps) {
+    const { filter: currentFilter, setFilter: onFilterChange } = useAlbumStore();
     const navItems = [
         {
             id: "all" as const,
@@ -35,6 +32,11 @@ export function DashboardSidebar({
             id: "shared" as const,
             label: "Shared with me",
             icon: Users,
+        },
+        {
+            id: "favorites" as const,
+            label: "My favorites",
+            icon: Heart,
         },
     ];
 
