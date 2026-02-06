@@ -90,18 +90,17 @@ export default function AlbumDetailPage({ params }: { params: Promise<{ id: stri
     const [uploadProgress, setUploadProgress] = useState({ current: 0, total: 0, fileName: '', percent: 0 });
     const [deletingImageId, setDeletingImageId] = useState<string | null>(null);
 
-    // Handle Access Denial
+    // Handle Access Denial & Race Conditions
     useEffect(() => {
-        if (albumError) {
-            // Check for 401 (Unauthorized) or 403 (Forbidden)
-            // The fetcher attaches .status to the error object
-            // @ts-ignore
-            if (albumError.status === 401 || albumError.status === 403) {
-                toast.error("You don't have permission to view this album");
-                router.replace("/");
-            }
+        // If we have an auth error (401/403) but the user IS logged in, 
+        // it's likely a token expiration race condition where the auth hook refreshed it.
+        // Retry the album fetch.
+        // @ts-ignore
+        if (user && (albumError?.status === 401 || albumError?.status === 403)) {
+            console.log("User is logged in but Album returned 401/403. Retrying...");
+            mutateAlbum();
         }
-    }, [albumError, router]);
+    }, [user, albumError, mutateAlbum]);
     const [deletingAlbum, setDeletingAlbum] = useState(false);
     const [editingAlbum, setEditingAlbum] = useState(false);
     const [isDragging, setIsDragging] = useState(false);
@@ -348,7 +347,6 @@ export default function AlbumDetailPage({ params }: { params: Promise<{ id: stri
         try {
             updateProgress(10);
 
-            // Upload via FormData to server-side processing endpoint
             const formData = new FormData();
             formData.append('file', file);
             formData.append('albumId', albumId);
@@ -358,22 +356,20 @@ export default function AlbumDetailPage({ params }: { params: Promise<{ id: stri
 
             updateProgress(30);
 
-            const response = await fetch('/api/images/upload', {
-                method: 'POST',
-                body: formData,
-            });
+            // Use Server Action instead of API Route to support larger files
+            const { uploadImageAction } = await import("@/app/actions/upload-image");
+            const result = await uploadImageAction(formData);
 
             updateProgress(90);
 
-            if (!response.ok) {
-                const error = await response.json();
-                throw new Error(error.error || 'Upload failed');
+            if (result.error) {
+                throw new Error(result.error);
             }
 
             updateProgress(100);
         } catch (err) {
             console.error(`Failed to upload ${filename}:`, err);
-            toast.error(`Failed to upload ${filename} ${err}`);
+            toast.error(`Failed to upload ${filename}: ${err instanceof Error ? err.message : String(err)}`);
         }
     }
 
@@ -562,26 +558,84 @@ export default function AlbumDetailPage({ params }: { params: Promise<{ id: stri
         );
     }
 
-    if (!album) {
-        // If we are here, it means loading is false but data is missing.
-        // It might be a 404 or error state handled by the effect, or a brief gap.
-        // Render skeleton to avoid flash, or a "Not Found" message if error exists.
-        if (albumError) return null; // Let the effect handle it or render error page
+    // Error State Handling (Access Denied / Not Found)
+    if (albumError || (!album && !loading)) {
+        // @ts-ignore
+        const status = albumError?.status;
+        const isAccessDenied = status === 401 || status === 403;
+        const isNotFound = status === 404 || (!album && !loading); // Fallback for null data
 
-        // Fallback to skeleton if no error but no album yet (rare race condition)
-        return (
-            <div className="min-h-screen bg-gradient-to-b from-slate-50 to-blue-50/30 dark:from-slate-950 dark:to-slate-900">
-                <DashboardNavbar />
-                <main className="max-w-6xl mx-auto px-6 py-10">
-                    <Skeleton className="h-4 w-24 mb-8 rounded-full" />
-                    <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 mb-10">
-                        <div className="space-y-3 w-full max-w-lg">
-                            <Skeleton className="h-8 w-64 rounded-xl" />
-                        </div>
+        if (isAccessDenied) {
+            // If we are currently retrying (user is logged in), show loading skeleton instead of error
+            if (user && !albumData) {
+                return (
+                    <div className="min-h-screen bg-gradient-to-b from-slate-50 to-blue-50/30 dark:from-slate-950 dark:to-slate-900">
+                        <DashboardNavbar />
+                        <main className="max-w-6xl mx-auto px-6 py-10">
+                            <div className="flex flex-col items-center justify-center min-h-[60vh] space-y-4 animate-pulse">
+                                <div className="h-16 w-16 bg-slate-200 dark:bg-slate-800 rounded-full" />
+                                <div className="h-6 w-48 bg-slate-200 dark:bg-slate-800 rounded-lg" />
+                                <div className="h-4 w-64 bg-slate-200 dark:bg-slate-800 rounded-lg" />
+                            </div>
+                        </main>
                     </div>
-                </main>
-            </div>
-        );
+                );
+            }
+
+            return (
+                <div className="min-h-screen bg-gradient-to-b from-slate-50 to-blue-50/30 dark:from-slate-950 dark:to-slate-900">
+                    <DashboardNavbar />
+                    <main className="max-w-6xl mx-auto px-6 py-10 flex flex-col items-center justify-center min-h-[60vh] text-center">
+                        <div className="bg-white dark:bg-slate-800 p-4 rounded-full shadow-lg mb-6 ring-1 ring-slate-100 dark:ring-slate-700">
+                            <Lock className="h-10 w-10 text-slate-400 dark:text-slate-500" />
+                        </div>
+                        <h1 className="text-2xl font-bold text-slate-900 dark:text-white mb-2">Private Album</h1>
+                        <p className="text-slate-500 dark:text-slate-400 mb-8 max-w-md">
+                            This album is private or you don't have permission to view it.
+                            Please sign in with an account that has access.
+                        </p>
+                        <div className="flex gap-4">
+                            <Link href="/dashboard">
+                                <Button variant="outline" className="gap-2">
+                                    <ArrowLeft className="h-4 w-4" />
+                                    Back to Dashboard
+                                </Button>
+                            </Link>
+                            {!user && (
+                                <Link href="/">
+                                    <Button className="gap-2 bg-blue-500 hover:bg-blue-600 text-white">
+                                        Sign In
+                                    </Button>
+                                </Link>
+                            )}
+                        </div>
+                    </main>
+                </div>
+            );
+        }
+
+        if (isNotFound) {
+            return (
+                <div className="min-h-screen bg-gradient-to-b from-slate-50 to-blue-50/30 dark:from-slate-950 dark:to-slate-900">
+                    <DashboardNavbar />
+                    <main className="max-w-6xl mx-auto px-6 py-10 flex flex-col items-center justify-center min-h-[60vh] text-center">
+                        <div className="bg-white dark:bg-slate-800 p-4 rounded-full shadow-lg mb-6 ring-1 ring-slate-100 dark:ring-slate-700">
+                            <FolderOpen className="h-10 w-10 text-slate-400 dark:text-slate-500" />
+                        </div>
+                        <h1 className="text-2xl font-bold text-slate-900 dark:text-white mb-2">Album Not Found</h1>
+                        <p className="text-slate-500 dark:text-slate-400 mb-8 max-w-md">
+                            The album you are looking for does not exist or has been deleted.
+                        </p>
+                        <Link href="/dashboard">
+                            <Button className="gap-2">
+                                <ArrowLeft className="h-4 w-4" />
+                                Back to Dashboard
+                            </Button>
+                        </Link>
+                    </main>
+                </div>
+            );
+        }
     }
 
 
@@ -681,6 +735,15 @@ export default function AlbumDetailPage({ params }: { params: Promise<{ id: stri
                                         {uploading ? "Uploading..." : "Upload"}
                                     </span>
                                 </Button>
+                                <input
+                                    id="upload-input"
+                                    type="file"
+                                    className="hidden"
+                                    accept="image/*"
+                                    multiple
+                                    onChange={handleUpload}
+                                    disabled={uploading}
+                                />
                             </label>
                         )}
 
@@ -1276,7 +1339,7 @@ export default function AlbumDetailPage({ params }: { params: Promise<{ id: stri
                                     <div className="w-12 h-12 bg-blue-100 dark:bg-blue-900/50 group-hover:bg-blue-200 dark:group-hover:bg-blue-900 rounded-xl flex items-center justify-center transition-colors">
                                         <Plus className="h-6 w-6 text-blue-500" />
                                     </div>
-                                    <span className="text-xs font-medium text-blue-500">Add photo</span>
+                                    <span className="text-xs font-medium text-blue-500">{uploading ? "Uploading..." : "Add photo"}</span>
                                 </div>
                                 <input
                                     id="upload-grid"
