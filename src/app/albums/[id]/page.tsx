@@ -373,7 +373,7 @@ export default function AlbumDetailPage({ params }: { params: Promise<{ id: stri
             updateProgress(100);
         } catch (err) {
             console.error(`Failed to upload ${filename}:`, err);
-            toast.error(`Failed to upload ${filename}`);
+            toast.error(`Failed to upload ${filename} ${err}`);
         }
     }
 
