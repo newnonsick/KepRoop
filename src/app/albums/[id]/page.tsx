@@ -351,27 +351,56 @@ export default function AlbumDetailPage({ params }: { params: Promise<{ id: stri
         try {
             updateProgress(10);
 
-            const formData = new FormData();
-            formData.append('file', file);
-            formData.append('albumId', albumId);
-            if (folderId) {
-                formData.append('folderId', folderId);
-            }
+            // 1. Get Presigned URL
+            const urlRes = await fetch("/api/images/upload-url", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    filename,
+                    contentType: file.type,
+                    albumId
+                }),
+            });
+
+            if (!urlRes.ok) throw new Error("Failed to get upload URL");
+            const { url, key } = await urlRes.json();
 
             updateProgress(30);
 
-            // Use Server Action (now configured with maxDuration = 60s)
-            // This supports both 50MB files (via next.config.ts) AND long processing times
-            const { uploadImageAction } = await import("@/app/actions/upload-image");
-            const result = await uploadImageAction(formData);
+            // 2. Upload to S3 directly
+            const uploadRes = await fetch(url, {
+                method: "PUT",
+                headers: { "Content-Type": file.type },
+                body: file,
+            });
 
-            updateProgress(90);
+            if (!uploadRes.ok) throw new Error(`Failed to upload to S3: ${uploadRes.statusText}`);
 
-            if (result.error) {
-                throw new Error(result.error);
-            }
+            updateProgress(80);
+
+            // 3. Register Image in DB
+            // Note: We don't have EXIF or dimensions since we skipped sharp. 
+            // Ideally we'd parse this client-side or use a lambda trigger. 
+            // For now, sending basic info.
+            const regRes = await fetch("/api/images/register", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    albumId,
+                    s3Key: key,
+                    mimeType: file.type,
+                    size: file.size,
+                    filename: filename,
+                    folderId,
+                    width: 0, // Pending client-side extraction or lambda
+                    height: 0
+                }),
+            });
+
+            if (!regRes.ok) throw new Error("Failed to register image");
 
             updateProgress(100);
+
         } catch (err) {
             console.error(`Failed to upload ${filename}:`, err);
             toast.error(`Failed to upload ${filename}: ${err instanceof Error ? err.message : String(err)}`);
