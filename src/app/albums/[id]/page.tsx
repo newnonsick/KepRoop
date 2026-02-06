@@ -356,15 +356,21 @@ export default function AlbumDetailPage({ params }: { params: Promise<{ id: stri
 
             updateProgress(30);
 
-            // Use Server Action instead of API Route to support larger files
-            const { uploadImageAction } = await import("@/app/actions/upload-image");
-            const result = await uploadImageAction(formData);
+            // Use API Route instead of Server Action to support longer timeouts (maxDuration = 60s+)
+            // Server Actions often timeout at 10s-15s on some platforms/configs for heavy processing
+            const res = await fetch("/api/images/upload", {
+                method: "POST",
+                body: formData,
+            });
 
             updateProgress(90);
 
-            if (result.error) {
-                throw new Error(result.error);
+            if (!res.ok) {
+                const data = await res.json();
+                throw new Error(data.error || "Upload failed");
             }
+
+            // const result = await res.json(); // We don't strictly need the result image here as we refresh anyway
 
             updateProgress(100);
         } catch (err) {
