@@ -26,18 +26,23 @@ async function getUserId() {
 }
 
 export async function uploadImageAction(formData: FormData) {
+    console.log("Server Action: Starting uploadImageAction");
     const userId = await getUserId();
     if (!userId) {
+        console.log("Server Action: No userId");
         return { error: "Unauthorized" };
     }
 
     try {
+        console.log("Server Action: Getting form data");
         const file = formData.get("file") as File | null;
         const albumId = formData.get("albumId") as string | null;
         const folderId = formData.get("folderId") as string | null;
 
         if (!file) return { error: "No file provided" };
         if (!albumId) return { error: "Album ID is required" };
+
+        console.log(`Server Action: File received: ${file.name}, size: ${file.size}, type: ${file.type}`);
 
         if (file.size > MAX_FILE_SIZE) {
             return { error: "File too large (max 50MB)" };
@@ -52,21 +57,28 @@ export async function uploadImageAction(formData: FormData) {
             return { error: "Forbidden" };
         }
 
+        console.log("Server Action: Reading array buffer");
         const arrayBuffer = await file.arrayBuffer();
         const buffer = Buffer.from(arrayBuffer);
 
+        console.log("Server Action: Processing image with sharp");
+        // Log time taken for processing
+        const startProcess = Date.now();
         const processed = await processImage(buffer);
+        console.log(`Server Action: Image processed in ${(Date.now() - startProcess) / 1000}s`);
 
         const baseKey = `albums/${albumId}/${nanoid()}`;
         const keyOriginal = `${baseKey}/original.webp`;
         const keyDisplay = `${baseKey}/display.webp`;
         const keyThumb = `${baseKey}/thumb.webp`;
 
+        console.log("Server Action: Uploading to S3");
         await Promise.all([
             uploadBuffer(keyOriginal, processed.originalBuffer, "image/webp"),
             uploadBuffer(keyDisplay, processed.displayBuffer, "image/webp"),
             uploadBuffer(keyThumb, processed.thumbBuffer, "image/webp"),
         ]);
+        console.log("Server Action: Upload to S3 complete");
 
         const [image] = await db.insert(images).values({
             albumId,
@@ -88,6 +100,7 @@ export async function uploadImageAction(formData: FormData) {
             gpsLongitude: processed.exif?.gpsLongitude?.toString() || null,
         }).returning();
 
+        console.log("Server Action: DB insert complete, logging activity");
         await logActivity({
             userId,
             albumId,
@@ -102,6 +115,7 @@ export async function uploadImageAction(formData: FormData) {
             },
         });
 
+        console.log("Server Action: Success, returning");
         return {
             success: true,
             image: {
@@ -113,7 +127,7 @@ export async function uploadImageAction(formData: FormData) {
         };
 
     } catch (error) {
-        console.error("Upload error:", error);
+        console.error("Upload error details:", error);
         return { error: "Failed to process image" };
     }
 }
