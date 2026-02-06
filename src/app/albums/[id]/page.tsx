@@ -415,6 +415,24 @@ export default function AlbumDetailPage({ params }: { params: Promise<{ id: stri
         }
     }
 
+    async function downloadImage(url: string, filename: string) {
+        try {
+            const res = await fetch(url);
+            const blob = await res.blob();
+            const blobUrl = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = blobUrl;
+            a.download = filename;
+            document.body.appendChild(a);
+            a.click();
+            window.URL.revokeObjectURL(blobUrl);
+            document.body.removeChild(a);
+        } catch (err) {
+            console.error('Download failed', err);
+            window.open(url, '_blank');
+        }
+    }
+
     async function handleCoverUpload(e: React.ChangeEvent<HTMLInputElement>) {
         const file = e.target.files?.[0];
         if (!file) return;
@@ -1166,14 +1184,48 @@ export default function AlbumDetailPage({ params }: { params: Promise<{ id: stri
                         <DialogTitle>Photo Viewer</DialogTitle>
                     </VisuallyHidden>
                     <div className="relative w-full h-full flex items-center justify-center pointer-events-auto">
-                        {/* Close Button */}
-                        <button
-                            onClick={() => setSelectedImageIndex(null)}
-                            className="absolute right-4 top-4 z-50 p-3 bg-black/20 hover:bg-black/40 backdrop-blur-md rounded-full text-white transition-all shadow-lg border border-white/20 group hover:rotate-90"
-                            aria-label="Close viewer"
-                        >
-                            <X className="h-6 w-6" />
-                        </button>
+                        {/* Top Right Controls */}
+                        <div className="absolute right-4 top-4 z-50 flex items-center gap-2">
+                            {/* Delete Button */}
+                            {canEdit && (
+                                <button
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        if (selectedImageIndex !== null) {
+                                            setDeleteImageConfirmId(images[selectedImageIndex].id);
+                                        }
+                                    }}
+                                    className="p-3 bg-black/20 hover:bg-black/40 hover:text-red-400 backdrop-blur-md rounded-full text-white transition-all shadow-lg border border-white/20 group"
+                                    title="Delete photo"
+                                >
+                                    <Trash2 className="h-5 w-5" />
+                                </button>
+                            )}
+
+                            {/* Download Button */}
+                            <button
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    if (selectedImageIndex !== null) {
+                                        const img = images[selectedImageIndex];
+                                        downloadImage(img.originalUrl || img.url || '', img.originalFilename || `photo-${img.id}.webp`);
+                                    }
+                                }}
+                                className="p-3 bg-black/20 hover:bg-black/40 backdrop-blur-md rounded-full text-white transition-all shadow-lg border border-white/20 group"
+                                title="Download original"
+                            >
+                                <Download className="h-5 w-5" />
+                            </button>
+
+                            {/* Close Button */}
+                            <button
+                                onClick={() => setSelectedImageIndex(null)}
+                                className="p-3 bg-black/20 hover:bg-black/40 backdrop-blur-md rounded-full text-white transition-all shadow-lg border border-white/20 group hover:rotate-90"
+                                aria-label="Close viewer"
+                            >
+                                <X className="h-6 w-6" />
+                            </button>
+                        </div>
 
                         {/* Previous Button */}
                         <button

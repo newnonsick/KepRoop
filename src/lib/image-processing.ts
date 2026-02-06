@@ -31,30 +31,38 @@ export async function processImage(buffer: Buffer): Promise<ProcessedImage> {
 
     // Process all three variants in parallel
     const [originalBuffer, displayBuffer, thumbBuffer] = await Promise.all([
-        // Original: WebP lossless, preserving full quality
+        // Original: WebP quality 95, preserving orientation
+        // Changed from lossless to q95 to prevent 3x-4x size inflation on JPEGs
+        // Added .rotate() to fix orientation (EXIF)
         sharp(buffer)
-            .webp({ lossless: true })
+            .rotate()
+            .webp({ quality: 95 })
             .toBuffer(),
 
         // Display: WebP quality 90, max 2000px on longest side
         sharp(buffer)
+            .rotate()
             .resize(2000, 2000, { fit: 'inside', withoutEnlargement: true })
             .webp({ quality: 90 })
             .toBuffer(),
 
         // Thumbnail: WebP quality 70, max 400px on longest side
         sharp(buffer)
+            .rotate()
             .resize(400, 400, { fit: 'inside', withoutEnlargement: true })
             .webp({ quality: 70 })
             .toBuffer(),
     ]);
 
+    // Recalculate dimensions from the processed original to ensure they match rotation
+    const originalMetadata = await sharp(originalBuffer).metadata();
+
     return {
         originalBuffer,
         displayBuffer,
         thumbBuffer,
-        width: metadata.width || 0,
-        height: metadata.height || 0,
+        width: originalMetadata.width || metadata.width || 0,
+        height: originalMetadata.height || metadata.height || 0,
         exif,
     };
 }
