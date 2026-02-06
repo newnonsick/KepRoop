@@ -65,6 +65,10 @@ interface Album {
 
 type UserRole = "owner" | "editor" | "viewer" | null;
 
+
+// Allow longer timeout (60s) for uploads on this page
+export const maxDuration = 60;
+
 export default function AlbumDetailPage({ params }: { params: Promise<{ id: string }> }) {
     const router = useRouter();
     const resolvedParams = use(params);
@@ -356,21 +360,16 @@ export default function AlbumDetailPage({ params }: { params: Promise<{ id: stri
 
             updateProgress(30);
 
-            // Use API Route instead of Server Action to support longer timeouts (maxDuration = 60s+)
-            // Server Actions often timeout at 10s-15s on some platforms/configs for heavy processing
-            const res = await fetch("/api/images/upload", {
-                method: "POST",
-                body: formData,
-            });
+            // Use Server Action (now configured with maxDuration = 60s)
+            // This supports both 50MB files (via next.config.ts) AND long processing times
+            const { uploadImageAction } = await import("@/app/actions/upload-image");
+            const result = await uploadImageAction(formData);
 
             updateProgress(90);
 
-            if (!res.ok) {
-                const data = await res.json();
-                throw new Error(data.error || "Upload failed");
+            if (result.error) {
+                throw new Error(result.error);
             }
-
-            // const result = await res.json(); // We don't strictly need the result image here as we refresh anyway
 
             updateProgress(100);
         } catch (err) {
