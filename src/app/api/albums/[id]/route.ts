@@ -2,10 +2,10 @@ import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { verifyAccessToken } from "@/lib/auth/tokens";
 import { db } from "@/db";
-import { albums, images } from "@/db/schema";
+import { albums, images, folders } from "@/db/schema";
 import { checkAlbumPermission } from "@/lib/auth/rbac";
 import { z } from "zod";
-import { eq } from "drizzle-orm";
+import { eq, asc, desc } from "drizzle-orm";
 
 // Helper
 async function getUserId() {
@@ -29,6 +29,11 @@ type Context = { params: Promise<{ id: string }> };
 export async function GET(request: Request, context: Context) {
     const { id: albumId } = await context.params;
     const userId = await getUserId();
+
+    // Parse sort parameters
+    const { searchParams } = new URL(request.url);
+    const sortBy = searchParams.get('sortBy') || 'createdAt'; // 'dateTaken' or 'createdAt'
+    const sortDir = searchParams.get('sortDir') || 'desc'; // 'asc' or 'desc'
 
     if (!userId) {
         const album = await db.query.albums.findFirst({ where: eq(albums.id, albumId) });
@@ -67,6 +72,9 @@ export async function GET(request: Request, context: Context) {
                 images: {
                     where: (images, { isNull }) => isNull(images.deletedAt),
                     orderBy: (images, { asc }) => [asc(images.createdAt)]
+                },
+                folders: {
+                    orderBy: (folders, { asc }) => [asc(folders.name)]
                 }
             }
         });
@@ -76,7 +84,10 @@ export async function GET(request: Request, context: Context) {
         const { generateDownloadUrl } = await import("@/lib/s3");
         const imagesWithUrls = await Promise.all(publicAlbum.images.map(async (img: typeof images.$inferSelect) => ({
             ...img,
-            url: await generateDownloadUrl(img.s3Key)
+            url: await generateDownloadUrl(img.s3KeyThumb || img.s3KeyDisplay || img.s3Key!),
+            thumbUrl: img.s3KeyThumb ? await generateDownloadUrl(img.s3KeyThumb) : null,
+            displayUrl: img.s3KeyDisplay ? await generateDownloadUrl(img.s3KeyDisplay) : null,
+            originalUrl: img.s3KeyOriginal ? await generateDownloadUrl(img.s3KeyOriginal) : (img.s3Key ? await generateDownloadUrl(img.s3Key) : null),
         })));
 
         let coverImageUrl = null;
@@ -111,30 +122,57 @@ export async function GET(request: Request, context: Context) {
             images: {
                 where: (images, { isNull }) => isNull(images.deletedAt),
                 orderBy: (images, { asc }) => [asc(images.createdAt)]
+            },
+            folders: {
+                orderBy: (folders, { asc }) => [asc(folders.name)]
             }
         }
     });
 
     if (!album) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
-    // Generate signed URLs for images
     const { generateDownloadUrl } = await import("@/lib/s3");
 
     const imagesWithUrls = await Promise.all(album.images.map(async (img: typeof images.$inferSelect) => {
         return {
             ...img,
-            url: await generateDownloadUrl(img.s3Key)
+            url: await generateDownloadUrl(img.s3KeyThumb || img.s3KeyDisplay || img.s3Key!),
+            thumbUrl: img.s3KeyThumb ? await generateDownloadUrl(img.s3KeyThumb) : null,
+            displayUrl: img.s3KeyDisplay ? await generateDownloadUrl(img.s3KeyDisplay) : null,
+            originalUrl: img.s3KeyOriginal ? await generateDownloadUrl(img.s3KeyOriginal) : (img.s3Key ? await generateDownloadUrl(img.s3Key) : null),
         };
     }));
+
+    // Sort images based on query params
+    const sortedImages = [...imagesWithUrls].sort((a, b) => {
+        let aVal: Date | null = null;
+        let bVal: Date | null = null;
+
+        if (sortBy === 'dateTaken') {
+            aVal = a.dateTaken ? new Date(a.dateTaken) : null;
+            bVal = b.dateTaken ? new Date(b.dateTaken) : null;
+        } else {
+            aVal = a.createdAt ? new Date(a.createdAt) : null;
+            bVal = b.createdAt ? new Date(b.createdAt) : null;
+        }
+
+        // Handle nulls - push them to the end
+        if (!aVal && !bVal) return 0;
+        if (!aVal) return 1;
+        if (!bVal) return -1;
+
+        const comparison = aVal.getTime() - bVal.getTime();
+        return sortDir === 'asc' ? comparison : -comparison;
+    });
 
     // Get cover image URL (use coverImageId or first image as fallback)
     let coverImageUrl = null;
     if (album.coverImageId) {
-        const coverImage = imagesWithUrls.find(img => img.id === album.coverImageId);
+        const coverImage = sortedImages.find(img => img.id === album.coverImageId);
         coverImageUrl = coverImage?.url || null;
     }
-    if (!coverImageUrl && imagesWithUrls.length > 0) {
-        coverImageUrl = imagesWithUrls[0].url;
+    if (!coverImageUrl && sortedImages.length > 0) {
+        coverImageUrl = sortedImages[0].url;
     }
 
     // Get user role for permission display in UI
@@ -144,7 +182,7 @@ export async function GET(request: Request, context: Context) {
     return NextResponse.json({
         album: {
             ...album,
-            images: imagesWithUrls,
+            images: sortedImages,
             coverImageUrl,
         },
         userRole

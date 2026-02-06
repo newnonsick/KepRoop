@@ -82,7 +82,7 @@ export async function generateMetadata({ params }: { params: Promise<{ code: str
             where: eq(images.id, album.coverImageId)
         });
         if (coverImage) {
-            imageUrl = await generateDownloadUrl(coverImage.s3Key);
+            imageUrl = await generateDownloadUrl(coverImage.s3KeyThumb || coverImage.s3KeyDisplay || coverImage.s3Key!);
         }
     }
 

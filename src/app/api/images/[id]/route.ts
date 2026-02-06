@@ -3,6 +3,7 @@ import { cookies } from "next/headers";
 import { verifyAccessToken } from "@/lib/auth/tokens";
 import { checkAlbumPermission } from "@/lib/auth/rbac";
 import { generateDownloadUrl, deleteS3Object } from "@/lib/s3";
+import { logActivity } from "@/lib/activity";
 import { db } from "@/db";
 import { images } from "@/db/schema";
 import { eq } from "drizzle-orm";
@@ -63,9 +64,18 @@ export async function GET(request: Request, context: Context) {
         return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
-    // 3. Generate URL
-    const url = await generateDownloadUrl(image.s3Key);
-    return NextResponse.json({ url });
+    // 3. Generate URLs for all variants
+    const thumbUrl = image.s3KeyThumb ? await generateDownloadUrl(image.s3KeyThumb) : null;
+    const displayUrl = image.s3KeyDisplay ? await generateDownloadUrl(image.s3KeyDisplay) : null;
+    const originalUrl = image.s3KeyOriginal ? await generateDownloadUrl(image.s3KeyOriginal) : null;
+    const url = await generateDownloadUrl(image.s3KeyDisplay || image.s3KeyOriginal || image.s3Key!);
+
+    return NextResponse.json({
+        url,
+        thumbUrl,
+        displayUrl,
+        originalUrl,
+    });
 }
 
 export async function DELETE(request: Request, context: Context) {
@@ -93,6 +103,14 @@ export async function DELETE(request: Request, context: Context) {
         deletedAt: new Date(),
         deletedBy: userId
     }).where(eq(images.id, id));
+
+    // Log activity
+    await logActivity({
+        userId,
+        albumId: image.albumId,
+        imageId: image.id,
+        action: "image_delete",
+    });
 
     return NextResponse.json({ success: true });
 }
@@ -122,6 +140,14 @@ export async function PATCH(request: Request, context: Context) {
             deletedAt: null,
             deletedBy: null
         }).where(eq(images.id, id));
+
+        // Log activity
+        await logActivity({
+            userId,
+            albumId: image.albumId,
+            imageId: image.id,
+            action: "image_restore",
+        });
 
         return NextResponse.json({ success: true });
     }

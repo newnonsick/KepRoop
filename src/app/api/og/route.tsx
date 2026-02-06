@@ -62,7 +62,7 @@ export async function GET(request: Request) {
 
         // Generate URLs
         const imageUrls = await Promise.all(
-            albumImages.map(img => generateDownloadUrl(img.s3Key))
+            albumImages.map(img => generateDownloadUrl(img.s3KeyThumb || img.s3KeyDisplay || img.s3Key!))
         );
 
         // Calculate Grid Styles

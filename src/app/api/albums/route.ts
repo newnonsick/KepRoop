@@ -164,13 +164,13 @@ export async function GET(request: Request) {
             if (album.coverImageId) {
                 const coverImg = album.images.find((img: any) => img.id === album.coverImageId);
                 if (coverImg) {
-                    coverImageUrl = await generateDownloadUrl(coverImg.s3Key);
+                    coverImageUrl = await generateDownloadUrl(coverImg.s3KeyThumb || coverImg.s3KeyDisplay || coverImg.s3Key!);
                 } else {
                     const dbCoverImg = await db.query.images.findFirst({
                         where: eq(images.id, album.coverImageId)
                     });
                     if (dbCoverImg) {
-                        coverImageUrl = await generateDownloadUrl(dbCoverImg.s3Key);
+                        coverImageUrl = await generateDownloadUrl(dbCoverImg.s3KeyThumb || dbCoverImg.s3KeyDisplay || dbCoverImg.s3Key!);
                     }
                 }
             }
@@ -178,7 +178,7 @@ export async function GET(request: Request) {
             // 2. Generate preview URLs
             if (album.images?.length) {
                 for (const img of album.images) {
-                    previewImageUrls.push(await generateDownloadUrl(img.s3Key));
+                    previewImageUrls.push(await generateDownloadUrl((img as any).s3KeyThumb || (img as any).s3KeyDisplay || (img as any).s3Key!));
                 }
             }
 

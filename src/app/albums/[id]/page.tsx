@@ -3,7 +3,7 @@
 import { useEffect, useState, use } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, Lock, Globe, Plus, Upload, Loader2, Image as ImageIcon, Trash2, Star, Download, MoreVertical, LogOut, UserMinus, Camera, X } from "lucide-react";
+import { ArrowLeft, Lock, Globe, Plus, Upload, Loader2, Image as ImageIcon, Trash2, Star, Download, MoreVertical, LogOut, UserMinus, Camera, X, CheckSquare, Square, XCircle, ArrowUpDown, Folder, ChevronRight, FolderPlus, Edit2 } from "lucide-react";
 import useSWR from "swr";
 import { fetcher } from "@/lib/fetcher";
 import { useAuth } from "@/components/providers/AuthProvider";
@@ -12,8 +12,12 @@ import { DashboardNavbar } from "@/components/DashboardNavbar";
 import { ShareAlbumDialog } from "@/components/ShareAlbumDialog";
 import { EditAlbumDialog } from "@/components/EditAlbumDialog";
 import { TrashDialog } from "@/components/TrashDialog";
+import { CreateFolderDialog } from "@/components/CreateFolderDialog";
+import { EditFolderDialog } from "@/components/EditFolderDialog";
+import { DeleteFolderDialog } from "@/components/DeleteFolderDialog";
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogTrigger, DialogTitle } from "@/components/ui/dialog";
+import { VisuallyHidden } from "@radix-ui/react-visually-hidden";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Progress } from "@/components/ui/progress";
 import {
@@ -30,8 +34,20 @@ interface Image {
     id: string;
     s3Key: string;
     url?: string;
+    thumbUrl?: string;
+    displayUrl?: string;
+    originalUrl?: string;
+    originalFilename?: string;
     width?: number;
     height?: number;
+    createdAt: string;
+    dateTaken?: string;
+    folderId?: string | null;
+}
+
+interface Folder {
+    id: string;
+    name: string;
     createdAt: string;
 }
 
@@ -43,6 +59,7 @@ interface Album {
     ownerId: string;
     coverImageId?: string;
     images?: Image[];
+    folders?: Folder[];
 }
 
 type UserRole = "owner" | "editor" | "viewer" | null;
@@ -52,7 +69,19 @@ export default function AlbumDetailPage({ params }: { params: Promise<{ id: stri
     const resolvedParams = use(params);
     const albumId = resolvedParams.id;
 
-    const { data: albumData, error: albumError, isLoading: albumLoading, mutate: mutateAlbum } = useSWR(`/api/albums/${albumId}`, fetcher);
+    // Folder navigation state
+    const [currentFolderId, setCurrentFolderId] = useState<string | null>(null);
+    const [editingFolder, setEditingFolder] = useState<Folder | null>(null);
+    const [deletingFolder, setDeletingFolder] = useState<Folder | null>(null);
+
+    // Sorting state
+    const [sortBy, setSortBy] = useState<'createdAt' | 'dateTaken'>('createdAt');
+    const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc');
+
+    const { data: albumData, error: albumError, isLoading: albumLoading, mutate: mutateAlbum } = useSWR(
+        `/api/albums/${albumId}?sortBy=${sortBy}&sortDir=${sortDir}`,
+        fetcher
+    );
     const { user, isLoading: authLoading } = useAuth();
 
     const [uploading, setUploading] = useState(false);
@@ -82,13 +111,27 @@ export default function AlbumDetailPage({ params }: { params: Promise<{ id: stri
     // Photo Navigation State
     const [selectedImageIndex, setSelectedImageIndex] = useState<number | null>(null);
 
+    // Multi-select state for bulk operations
+    const [selectMode, setSelectMode] = useState(false);
+    const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+    const [bulkOperating, setBulkOperating] = useState(false);
+
+    const folders = (albumData?.album?.folders || []) as Folder[];
+
+    // Filter images by current folder
+    const images = (albumData?.album?.images || []).filter((img: Image) => {
+        if (currentFolderId) return img.folderId === currentFolderId;
+        return !img.folderId; // Root View: Only show images NOT in any folder
+    });
+
+    const imageCount = images.length;
+
     const album = albumData?.album || null;
     const userRole = albumData?.userRole || null;
     const loading = albumLoading || authLoading;
 
     const canEdit = userRole === "owner" || userRole === "editor";
     const isOwner = userRole === "owner";
-    const images = album?.images || [];
 
     // Navigation Handlers
     const handleNext = () => {
@@ -158,12 +201,105 @@ export default function AlbumDetailPage({ params }: { params: Promise<{ id: stri
         }
     }
 
+    // Bulk operation handlers
+    const toggleSelectMode = () => {
+        setSelectMode(!selectMode);
+        setSelectedIds(new Set());
+    };
+
+    const toggleImageSelection = (imageId: string) => {
+        const newSelected = new Set(selectedIds);
+        if (newSelected.has(imageId)) {
+            newSelected.delete(imageId);
+        } else {
+            newSelected.add(imageId);
+        }
+        setSelectedIds(newSelected);
+    };
+
+    const selectAll = () => {
+        setSelectedIds(new Set(images.map((img: Image) => img.id)));
+    };
+
+    const deselectAll = () => {
+        setSelectedIds(new Set());
+    };
+
+    async function handleBulkDelete() {
+        if (selectedIds.size === 0) return;
+
+        setBulkOperating(true);
+        try {
+            const res = await fetch('/api/images/bulk', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    action: 'delete',
+                    imageIds: Array.from(selectedIds),
+                    albumId,
+                }),
+            });
+
+            if (res.ok) {
+                const data = await res.json();
+                toast.success(`Deleted ${data.deletedCount} photos`);
+                setSelectedIds(new Set());
+                setSelectMode(false);
+                refreshAlbum();
+            } else {
+                const error = await res.json();
+                toast.error(error.error || 'Failed to delete photos');
+            }
+        } catch (err) {
+            toast.error('Error deleting photos');
+        } finally {
+            setBulkOperating(false);
+        }
+    }
+
+    async function handleBulkDownload() {
+        if (selectedIds.size === 0) return;
+
+        setBulkOperating(true);
+        try {
+            toast.info('Preparing download...');
+            const res = await fetch('/api/images/bulk', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    action: 'download',
+                    imageIds: Array.from(selectedIds),
+                    albumId,
+                }),
+            });
+
+            if (res.ok) {
+                const blob = await res.blob();
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `photos-${albumId.slice(0, 8)}.zip`;
+                document.body.appendChild(a);
+                a.click();
+                a.remove();
+                window.URL.revokeObjectURL(url);
+                toast.success('Download started');
+            } else {
+                const error = await res.json();
+                toast.error(error.error || 'Failed to download');
+            }
+        } catch (err) {
+            toast.error('Error downloading photos');
+        } finally {
+            setBulkOperating(false);
+        }
+    }
+
     const refreshAlbum = () => mutateAlbum();
 
 
-    async function uploadSingleFile(file: File, index: number, total: number) {
+    async function uploadSingleFile(file: File, index: number, total: number, folderId?: string) {
         const filename = file.name;
-        const contentType = file.type;
 
         // Update progress
         const updateProgress = (percent: number) => {
@@ -171,49 +307,36 @@ export default function AlbumDetailPage({ params }: { params: Promise<{ id: stri
         };
 
         try {
-            updateProgress(20);
-            const resUrl = await fetch("/api/images/upload-url", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ albumId, contentType, filename }),
+            updateProgress(10);
+
+            // Upload via FormData to server-side processing endpoint
+            const formData = new FormData();
+            formData.append('file', file);
+            formData.append('albumId', albumId);
+            if (folderId) {
+                formData.append('folderId', folderId);
+            }
+
+            updateProgress(30);
+
+            const response = await fetch('/api/images/upload', {
+                method: 'POST',
+                body: formData,
             });
-            const { url, key } = await resUrl.json();
 
-            if (!url) throw new Error("Failed to get upload URL");
+            updateProgress(90);
 
-            updateProgress(50);
-            await fetch(url, {
-                method: "PUT",
-                headers: { "Content-Type": contentType },
-                body: file,
-            });
-
-            updateProgress(80);
-
-            // Get image dimensions
-            const img = new window.Image();
-            img.src = URL.createObjectURL(file);
-            await new Promise((resolve) => { img.onload = resolve; });
-
-            await fetch("/api/images", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                    albumId,
-                    s3Key: key,
-                    mimeType: contentType,
-                    size: file.size,
-                    width: img.naturalWidth,
-                    height: img.naturalHeight,
-                }),
-            });
+            if (!response.ok) {
+                const error = await response.json();
+                throw new Error(error.error || 'Upload failed');
+            }
 
             updateProgress(100);
-            URL.revokeObjectURL(img.src);
         } catch (err) {
             console.error(`Failed to upload ${filename}:`, err);
         }
     }
+
 
     async function handleFilesUpload(files: FileList | File[]) {
         const imageFiles = Array.from(files).filter(f => f.type.startsWith('image/'));
@@ -224,7 +347,7 @@ export default function AlbumDetailPage({ params }: { params: Promise<{ id: stri
 
         // Upload files sequentially to avoid overwhelming the server
         for (let i = 0; i < imageFiles.length; i++) {
-            await uploadSingleFile(imageFiles[i], i, imageFiles.length);
+            await uploadSingleFile(imageFiles[i], i, imageFiles.length, currentFolderId || undefined);
         }
 
         setUploading(false);
@@ -403,7 +526,7 @@ export default function AlbumDetailPage({ params }: { params: Promise<{ id: stri
         );
     }
 
-    const imageCount = images.length || 0;
+
 
     return (
         <div
@@ -605,6 +728,229 @@ export default function AlbumDetailPage({ params }: { params: Promise<{ id: stri
                     </div>
                 </div>
 
+                {/* Folder Navigation & Actions */}
+                <div className="mb-6 flex items-center justify-between">
+                    <div className="flex items-center gap-2 text-lg font-medium text-slate-900 dark:text-white">
+                        {currentFolderId ? (
+                            <>
+                                <button
+                                    onClick={() => setCurrentFolderId(null)}
+                                    className="hover:text-blue-500 transition-colors flex items-center gap-1 hover:underline decoration-blue-500/30"
+                                >
+                                    <Folder className="h-5 w-5 text-slate-400 group-hover:text-blue-500" />
+                                    {album?.title || "Album"}
+                                </button>
+                                <ChevronRight className="h-4 w-4 text-slate-400" />
+                                <span>{folders.find(f => f.id === currentFolderId)?.name || 'Folder'}</span>
+                            </>
+                        ) : (
+                            folders.length > 0 && (
+                                <div className="flex items-center gap-2">
+                                    <Folder className="h-5 w-5 text-slate-400" />
+                                    Folders
+                                </div>
+                            )
+                        )}
+                    </div>
+
+                    {canEdit && !currentFolderId && (
+                        <CreateFolderDialog albumId={albumId} onFolderCreated={() => mutateAlbum()}>
+                            <Button variant="outline" className="gap-2 rounded-xl border-dashed border-slate-300 dark:border-slate-700 hover:border-blue-400 dark:hover:border-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/20 text-slate-600 dark:text-slate-300">
+                                <FolderPlus className="h-4 w-4" />
+                                New Folder
+                            </Button>
+                        </CreateFolderDialog>
+                    )}
+                </div>
+
+                {/* Folder Grid (Root View Only) */}
+                {!currentFolderId && folders.length > 0 && (
+                    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 mb-8">
+                        {folders.map(folder => (
+                            <div key={folder.id} className="relative group">
+                                <button
+                                    onClick={() => setCurrentFolderId(folder.id)}
+                                    className="w-full flex flex-col items-center justify-center p-6 bg-white dark:bg-slate-800 rounded-2xl border border-slate-100 dark:border-slate-700 shadow-sm hover:shadow-md hover:border-blue-200 dark:hover:border-blue-800 transition-all text-center relative overflow-hidden"
+                                >
+                                    <div className="absolute inset-0 bg-gradient-to-br from-transparent to-slate-50 dark:to-slate-800/50 opacity-0 group-hover:opacity-100 transition-opacity" />
+                                    <Folder className="h-10 w-10 text-blue-300 dark:text-blue-600 mb-3 group-hover:scale-110 transition-transform relative z-10 fill-current" />
+                                    <span className="font-medium text-slate-700 dark:text-slate-200 truncate w-full group-hover:text-blue-600 dark:group-hover:text-blue-400 relative z-10">
+                                        {folder.name}
+                                    </span>
+                                    <span className="text-xs text-slate-400 mt-1 relative z-10">
+                                        {albumData?.album?.images?.filter((img: Image) => img.folderId === folder.id).length || 0} photos
+                                    </span>
+                                </button>
+
+                                {canEdit && (
+                                    <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity z-20">
+                                        <DropdownMenu>
+                                            <DropdownMenuTrigger asChild>
+                                                <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full bg-white/80 dark:bg-slate-800/80 hover:bg-white dark:hover:bg-slate-700 shadow-sm backdrop-blur-sm border border-transparent hover:border-slate-200 dark:hover:border-slate-600 transition-all">
+                                                    <MoreVertical className="h-4 w-4 text-slate-500 dark:text-slate-400" />
+                                                </Button>
+                                            </DropdownMenuTrigger>
+                                            <DropdownMenuContent align="end" className="w-40 rounded-xl bg-white dark:bg-slate-800 border-slate-100 dark:border-slate-700 shadow-lg p-1">
+                                                <DropdownMenuItem
+                                                    onClick={() => setEditingFolder(folder)}
+                                                    className="gap-2 cursor-pointer rounded-lg text-slate-700 dark:text-slate-200 focus:bg-slate-50 dark:focus:bg-slate-700 focus:text-slate-900 dark:focus:text-white"
+                                                >
+                                                    <Edit2 className="h-4 w-4" /> Rename
+                                                </DropdownMenuItem>
+                                                <DropdownMenuSeparator className="bg-slate-100 dark:bg-slate-700 my-1" />
+                                                <DropdownMenuItem
+                                                    onClick={() => setDeletingFolder(folder)}
+                                                    className="gap-2 cursor-pointer rounded-lg text-red-600 dark:text-red-400 focus:text-red-700 dark:focus:text-red-300 focus:bg-red-50 dark:focus:bg-red-900/20"
+                                                >
+                                                    <Trash2 className="h-4 w-4" /> Delete
+                                                </DropdownMenuItem>
+                                            </DropdownMenuContent>
+                                        </DropdownMenu>
+                                    </div>
+                                )}
+                            </div>
+                        ))}
+                    </div>
+                )}
+
+                {/* Folder Dialogs */}
+                {editingFolder && (
+                    <EditFolderDialog
+                        albumId={albumId}
+                        folder={editingFolder}
+                        open={!!editingFolder}
+                        onOpenChange={(open) => !open && setEditingFolder(null)}
+                        onFolderUpdated={() => mutateAlbum()}
+                    />
+                )}
+                {deletingFolder && (
+                    <DeleteFolderDialog
+                        albumId={albumId}
+                        folder={deletingFolder}
+                        open={!!deletingFolder}
+                        onOpenChange={(open) => !open && setDeletingFolder(null)}
+                        onFolderDeleted={() => mutateAlbum()}
+                    />
+                )}
+
+                {/* Bulk Action Toolbar */}
+                {canEdit && imageCount > 0 && (
+                    <div className="mb-6 flex items-center gap-2 flex-wrap">
+                        {!selectMode ? (
+                            <>
+                                {/* Select Button */}
+                                <button
+                                    onClick={toggleSelectMode}
+                                    className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-slate-600 dark:text-slate-300 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-full hover:bg-slate-50 dark:hover:bg-slate-700 hover:border-slate-300 dark:hover:border-slate-600 transition-all shadow-sm"
+                                >
+                                    <CheckSquare className="h-4 w-4" />
+                                    <span>Select</span>
+                                </button>
+
+                                {/* Sort Dropdown */}
+                                <DropdownMenu>
+                                    <DropdownMenuTrigger asChild>
+                                        <button className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-slate-600 dark:text-slate-300 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-full hover:bg-slate-50 dark:hover:bg-slate-700 hover:border-slate-300 dark:hover:border-slate-600 transition-all shadow-sm">
+                                            <ArrowUpDown className="h-4 w-4" />
+                                            <span>
+                                                {sortBy === 'dateTaken' ? 'Date Taken' : 'Uploaded'}
+                                                <span className="ml-1 text-slate-400 dark:text-slate-500">
+                                                    {sortDir === 'asc' ? '↑' : '↓'}
+                                                </span>
+                                            </span>
+                                        </button>
+                                    </DropdownMenuTrigger>
+                                    <DropdownMenuContent align="start" className="w-52 rounded-xl p-1 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-lg">
+                                        <DropdownMenuItem
+                                            onClick={() => { setSortBy('createdAt'); setSortDir('desc'); }}
+                                            className={`rounded-lg cursor-pointer ${sortBy === 'createdAt' && sortDir === 'desc' ? 'bg-blue-50 dark:bg-blue-900/40 text-blue-600 dark:text-blue-400' : ''}`}
+                                        >
+                                            <span className="flex items-center gap-2">
+                                                <span>Newest First</span>
+                                                {sortBy === 'createdAt' && sortDir === 'desc' && <span className="ml-auto">✓</span>}
+                                            </span>
+                                        </DropdownMenuItem>
+                                        <DropdownMenuItem
+                                            onClick={() => { setSortBy('createdAt'); setSortDir('asc'); }}
+                                            className={`rounded-lg cursor-pointer ${sortBy === 'createdAt' && sortDir === 'asc' ? 'bg-blue-50 dark:bg-blue-900/40 text-blue-600 dark:text-blue-400' : ''}`}
+                                        >
+                                            <span className="flex items-center gap-2">
+                                                <span>Oldest First</span>
+                                                {sortBy === 'createdAt' && sortDir === 'asc' && <span className="ml-auto">✓</span>}
+                                            </span>
+                                        </DropdownMenuItem>
+                                        <DropdownMenuSeparator className="my-1" />
+                                        <DropdownMenuItem
+                                            onClick={() => { setSortBy('dateTaken'); setSortDir('desc'); }}
+                                            className={`rounded-lg cursor-pointer ${sortBy === 'dateTaken' && sortDir === 'desc' ? 'bg-blue-50 dark:bg-blue-900/40 text-blue-600 dark:text-blue-400' : ''}`}
+                                        >
+                                            <span className="flex items-center gap-2">
+                                                <Camera className="h-4 w-4" />
+                                                <span>Date Taken (New)</span>
+                                                {sortBy === 'dateTaken' && sortDir === 'desc' && <span className="ml-auto">✓</span>}
+                                            </span>
+                                        </DropdownMenuItem>
+                                        <DropdownMenuItem
+                                            onClick={() => { setSortBy('dateTaken'); setSortDir('asc'); }}
+                                            className={`rounded-lg cursor-pointer ${sortBy === 'dateTaken' && sortDir === 'asc' ? 'bg-blue-50 dark:bg-blue-900/40 text-blue-600 dark:text-blue-400' : ''}`}
+                                        >
+                                            <span className="flex items-center gap-2">
+                                                <Camera className="h-4 w-4" />
+                                                <span>Date Taken (Old)</span>
+                                                {sortBy === 'dateTaken' && sortDir === 'asc' && <span className="ml-auto">✓</span>}
+                                            </span>
+                                        </DropdownMenuItem>
+                                    </DropdownMenuContent>
+                                </DropdownMenu>
+                            </>
+                        ) : (
+                            <>
+                                {/* Selection Count Badge */}
+                                <div className="inline-flex items-center gap-2 px-4 py-2 text-sm font-semibold bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-full shadow-sm">
+                                    <CheckSquare className="h-4 w-4" />
+                                    {selectedIds.size} selected
+                                </div>
+
+                                {/* Select/Deselect All */}
+                                <button
+                                    onClick={selectedIds.size === images.length ? deselectAll : selectAll}
+                                    className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-slate-600 dark:text-slate-300 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-full hover:bg-slate-50 dark:hover:bg-slate-700 transition-all shadow-sm"
+                                >
+                                    {selectedIds.size === images.length ? 'Deselect All' : 'Select All'}
+                                </button>
+
+                                {/* Download ZIP */}
+                                <button
+                                    onClick={handleBulkDownload}
+                                    disabled={selectedIds.size === 0 || bulkOperating}
+                                    className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-slate-600 dark:text-slate-300 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-full hover:bg-slate-50 dark:hover:bg-slate-700 transition-all shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                                >
+                                    {bulkOperating ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
+                                    <span className="hidden sm:inline">Download</span>
+                                </button>
+
+                                {/* Delete */}
+                                <button
+                                    onClick={handleBulkDelete}
+                                    disabled={selectedIds.size === 0 || bulkOperating}
+                                    className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-red-500 dark:text-red-400 bg-white dark:bg-slate-800 border border-red-200 dark:border-red-900/50 rounded-full hover:bg-red-50 dark:hover:bg-red-900/30 transition-all shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                                >
+                                    {bulkOperating ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
+                                    <span className="hidden sm:inline">Delete</span>
+                                </button>
+
+                                {/* Cancel */}
+                                <button
+                                    onClick={toggleSelectMode}
+                                    className="inline-flex items-center justify-center w-9 h-9 text-slate-400 dark:text-slate-500 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-full hover:bg-slate-50 dark:hover:bg-slate-700 hover:text-slate-600 dark:hover:text-slate-300 transition-all shadow-sm"
+                                >
+                                    <X className="h-4 w-4" />
+                                </button>
+                            </>
+                        )}
+                    </div>
+                )}
+
                 {/* Upload Progress */}
                 {uploading && uploadProgress.total > 0 && (
                     <div className="mb-8 bg-white dark:bg-slate-800 rounded-2xl p-5 border border-blue-100 dark:border-blue-800 shadow-sm">
@@ -656,12 +1002,31 @@ export default function AlbumDetailPage({ params }: { params: Promise<{ id: stri
                         {images.map((image: Image, index: number) => {
                             const isCover = album.coverImageId === image.id;
                             const isDeleting = deletingImageId === image.id;
+                            const isSelected = selectedIds.has(image.id);
 
                             return (
                                 <div key={image.id} className="relative group mb-4 break-inside-avoid">
+                                    {/* Selection checkbox */}
+                                    {selectMode && (
+                                        <button
+                                            onClick={() => toggleImageSelection(image.id)}
+                                            className={`absolute top-2 right-2 z-10 w-7 h-7 rounded-lg flex items-center justify-center transition-all shadow-lg ${isSelected
+                                                ? 'bg-blue-500 text-white'
+                                                : 'bg-white/90 dark:bg-slate-700/90 text-slate-400 hover:text-blue-500'
+                                                }`}
+                                        >
+                                            {isSelected ? (
+                                                <CheckSquare className="h-4 w-4" />
+                                            ) : (
+                                                <Square className="h-4 w-4" />
+                                            )}
+                                        </button>
+                                    )}
+
                                     <button
-                                        onClick={() => setSelectedImageIndex(index)}
-                                        className="w-full overflow-hidden rounded-2xl bg-slate-100 dark:bg-slate-700 cursor-zoom-in focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 shadow-sm hover:shadow-lg transition-shadow"
+                                        onClick={() => selectMode ? toggleImageSelection(image.id) : setSelectedImageIndex(index)}
+                                        className={`w-full overflow-hidden rounded-2xl bg-slate-100 dark:bg-slate-700 ${selectMode ? 'cursor-pointer' : 'cursor-zoom-in'} focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 shadow-sm hover:shadow-lg transition-shadow ${isSelected ? 'ring-2 ring-blue-500 ring-offset-2' : ''
+                                            }`}
                                         disabled={isDeleting}
                                     >
                                         {image.url ? (
@@ -684,7 +1049,7 @@ export default function AlbumDetailPage({ params }: { params: Promise<{ id: stri
                                     </button>
 
                                     {/* Cover indicator */}
-                                    {isCover && (
+                                    {isCover && !selectMode && (
                                         <div className="absolute top-2 left-2 px-2 py-1 bg-blue-500 text-white text-xs font-medium rounded-lg flex items-center gap-1 shadow-lg">
                                             <Star className="h-3 w-3 fill-current" />
                                             Cover
@@ -692,21 +1057,52 @@ export default function AlbumDetailPage({ params }: { params: Promise<{ id: stri
                                     )}
 
                                     {/* Download button (visible on hover for everyone) */}
-                                    {image.url && (
-                                        <a
-                                            href={image.url}
-                                            download
-                                            target="_blank"
-                                            rel="noopener noreferrer"
+                                    {/* Download button (visible on hover for everyone) */}
+                                    {(image.originalUrl || image.url) && (
+                                        <button
+                                            onClick={async (e) => {
+                                                e.stopPropagation();
+                                                const url = image.originalUrl || image.url;
+                                                if (!url) return;
+
+                                                try {
+                                                    const res = await fetch(url);
+                                                    const blob = await res.blob();
+                                                    const blobUrl = window.URL.createObjectURL(blob);
+                                                    const a = document.createElement('a');
+                                                    a.href = blobUrl;
+                                                    a.download = image.originalFilename || `photo-${image.id}.webp`;
+                                                    document.body.appendChild(a);
+                                                    a.click();
+                                                    window.URL.revokeObjectURL(blobUrl);
+                                                    document.body.removeChild(a);
+                                                } catch (err) {
+                                                    console.error('Download failed', err);
+                                                    window.open(url, '_blank');
+                                                }
+                                            }}
                                             className="absolute bottom-2 right-2 p-2 bg-white/90 dark:bg-slate-800/90 backdrop-blur-sm rounded-lg shadow-lg hover:bg-white dark:hover:bg-slate-800 transition-all opacity-0 group-hover:opacity-100"
-                                            onClick={(e) => e.stopPropagation()}
                                         >
                                             <Download className="h-4 w-4 text-slate-600 dark:text-slate-300" />
-                                        </a>
+                                        </button>
                                     )}
 
-                                    {/* Edit actions (visible on hover for editors) */}
-                                    {canEdit && (
+                                    {/* Select button (visible on hover when NOT in select mode) */}
+                                    {canEdit && !selectMode && (
+                                        <button
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                setSelectMode(true);
+                                                setSelectedIds(new Set([image.id]));
+                                            }}
+                                            className="absolute top-2 left-2 p-2 bg-white/90 dark:bg-slate-800/90 backdrop-blur-sm rounded-lg shadow-lg hover:bg-white dark:hover:bg-slate-800 transition-all opacity-0 group-hover:opacity-100"
+                                        >
+                                            <Square className="h-4 w-4 text-slate-600 dark:text-slate-300" />
+                                        </button>
+                                    )}
+
+                                    {/* Edit actions (visible on hover for editors - only show menu and delete) */}
+                                    {canEdit && !selectMode && (
                                         <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity flex gap-1">
                                             <DropdownMenu>
                                                 <DropdownMenuTrigger asChild>
@@ -766,6 +1162,9 @@ export default function AlbumDetailPage({ params }: { params: Promise<{ id: stri
             {/* Centralized Photo Viewer Dialog */}
             <Dialog open={selectedImageIndex !== null} onOpenChange={(open) => !open && setSelectedImageIndex(null)}>
                 <DialogContent className="max-w-7xl p-0 border-0 bg-transparent shadow-none focus:outline-none h-screen w-screen flex flex-col justify-center pointer-events-none">
+                    <VisuallyHidden>
+                        <DialogTitle>Photo Viewer</DialogTitle>
+                    </VisuallyHidden>
                     <div className="relative w-full h-full flex items-center justify-center pointer-events-auto">
                         {/* Close Button */}
                         <button
@@ -798,15 +1197,18 @@ export default function AlbumDetailPage({ params }: { params: Promise<{ id: stri
                         {selectedImageIndex !== null && images[selectedImageIndex] && (
                             <div className="relative w-full h-full flex items-center justify-center p-4 md:p-12">
                                 <img
-                                    src={images[selectedImageIndex].url}
+                                    src={images[selectedImageIndex].displayUrl || images[selectedImageIndex].url}
                                     alt=""
                                     className="max-h-full max-w-full object-contain rounded-lg shadow-2xl"
                                 />
-                                {images[selectedImageIndex].createdAt && (
-                                    <div className="absolute bottom-4 left-1/2 -translate-x-1/2 px-4 py-2 bg-black/50 backdrop-blur-md rounded-full text-white text-sm">
-                                        {selectedImageIndex + 1} / {images.length}
-                                    </div>
-                                )}
+                                <div className="absolute bottom-4 left-1/2 -translate-x-1/2 px-4 py-2 bg-black/50 backdrop-blur-md rounded-full text-white text-sm flex items-center gap-3">
+                                    <span>{selectedImageIndex + 1} / {images.length}</span>
+                                    {images[selectedImageIndex].dateTaken && (
+                                        <span className="text-white/70">
+                                            {new Date(images[selectedImageIndex].dateTaken!).toLocaleDateString()}
+                                        </span>
+                                    )}
+                                </div>
                             </div>
                         )}
                     </div>

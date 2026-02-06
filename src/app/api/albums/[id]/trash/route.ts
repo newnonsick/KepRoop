@@ -47,7 +47,7 @@ export async function GET(request: Request, context: Context) {
     // Generate signed URLs for thumbnails
     const imagesWithUrls = await Promise.all(deletedImages.map(async (img) => ({
         ...img,
-        url: await generateDownloadUrl(img.s3Key)
+        url: await generateDownloadUrl(img.s3Key!)
     })));
 
     return NextResponse.json({ images: imagesWithUrls });
@@ -85,7 +85,17 @@ export async function DELETE(request: Request, context: Context) {
 
     // Hard delete from S3 and DB
     for (const img of imagesToDelete) {
-        await deleteS3Object(img.s3Key);
+        // Deduplicate keys to avoid redundant delete calls
+        const keysToDelete = new Set<string>();
+        if (img.s3Key) keysToDelete.add(img.s3Key);
+        if (img.s3KeyOriginal) keysToDelete.add(img.s3KeyOriginal);
+        if (img.s3KeyDisplay) keysToDelete.add(img.s3KeyDisplay);
+        if (img.s3KeyThumb) keysToDelete.add(img.s3KeyThumb);
+
+        // Delete unique keys
+        for (const key of keysToDelete) {
+            await deleteS3Object(key);
+        }
     }
 
     if (imagesToDelete.length > 0) {

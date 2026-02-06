@@ -14,6 +14,19 @@ const s3Client = new S3Client({
 
 const BUCKET_NAME = process.env.AWS_S3_BUCKET_NAME!;
 
+/**
+ * Upload a buffer directly to S3 (for server-side processed images)
+ */
+export async function uploadBuffer(key: string, buffer: Buffer, contentType: string) {
+    const command = new PutObjectCommand({
+        Bucket: BUCKET_NAME,
+        Key: key,
+        Body: buffer,
+        ContentType: contentType,
+    });
+    return s3Client.send(command);
+}
+
 export async function generateUploadUrl(key: string, contentType: string) {
     const command = new PutObjectCommand({
         Bucket: BUCKET_NAME,
@@ -32,9 +45,36 @@ export async function generateDownloadUrl(key: string) {
 }
 
 export async function deleteS3Object(key: string) {
-    const command = new DeleteObjectCommand({
+    try {
+        const command = new DeleteObjectCommand({
+            Bucket: BUCKET_NAME,
+            Key: key,
+        });
+        return await s3Client.send(command);
+    } catch (error: any) {
+        // Ignore if object not found (idempotent delete)
+        if (error.Code === 'NoSuchKey' || (error.$metadata && error.$metadata.httpStatusCode === 404)) {
+            return;
+        }
+        throw error;
+    }
+}
+
+/**
+ * Delete multiple S3 objects (for bulk operations)
+ */
+export async function deleteS3Objects(keys: string[]) {
+    return Promise.all(keys.map(key => deleteS3Object(key)));
+}
+
+/**
+ * Get S3 object as stream (for ZIP downloads)
+ */
+export async function getS3Object(key: string) {
+    const command = new GetObjectCommand({
         Bucket: BUCKET_NAME,
         Key: key,
     });
     return s3Client.send(command);
 }
+
