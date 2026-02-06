@@ -34,25 +34,38 @@ export async function POST(request: Request) {
             return NextResponse.json({ error: "Forbidden" }, { status: 403 });
         }
 
-        // Generate a unique S3 key
-        // We will store the "original" upload. 
-        // Note: Without server-side processing, we just store the raw file.
-        // The client-side logic keeps "original.webp" naming convention if it converts, 
-        // but for now we expect raw uploads.
-        // Let's stick to the existing folder structure: albums/{albumId}/{nanoid}/original.{ext}
-
         const ext = getExtensionFromMime(contentType);
         const imageId = nanoid();
         const baseKey = `albums/${albumId}/${imageId}`;
-        const key = `${baseKey}/original.${ext}`;
 
-        const url = await generateUploadUrl(key, contentType);
+        // Define keys for all 3 variants
+        // Note: Client will be responsible for converting to WebP, so we enforce .webp extension for display/thumb
+        const keyOriginal = `${baseKey}/original.${ext}`;
+        const keyDisplay = `${baseKey}/display.webp`;
+        const keyThumb = `${baseKey}/thumb.webp`;
+
+        // Generate 3 presigned URLs
+        // Original uses original content type (e.g. image/jpeg)
+        // Display/Thumb will be image/webp
+        const [originalUrl, displayUrl, thumbUrl] = await Promise.all([
+            generateUploadUrl(keyOriginal, contentType),
+            generateUploadUrl(keyDisplay, "image/webp"),
+            generateUploadUrl(keyThumb, "image/webp"),
+        ]);
 
         return NextResponse.json({
-            url,
-            key,
-            imageId, // Return the ID we generated so the client can use it for registration if needed
-            baseKey  // useful for client to know where things are going?
+            urls: {
+                original: originalUrl,
+                display: displayUrl,
+                thumb: thumbUrl
+            },
+            keys: {
+                original: keyOriginal,
+                display: keyDisplay,
+                thumb: keyThumb
+            },
+            imageId,
+            baseKey
         });
 
     } catch (error) {

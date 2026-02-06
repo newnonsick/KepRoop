@@ -349,51 +349,99 @@ export default function AlbumDetailPage({ params }: { params: Promise<{ id: stri
         };
 
         try {
+            updateProgress(5);
+
+            // 1. Extract EXIF (Client-side)
+            const exifr = (await import("exifr")).default;
+            let exifData = null;
+            try {
+                const parsed = await exifr.parse(file, {
+                    pick: ['DateTimeOriginal', 'Make', 'Model', 'GPSLatitude', 'GPSLongitude']
+                });
+                if (parsed) {
+                    exifData = {
+                        dateTaken: parsed.DateTimeOriginal,
+                        cameraMake: parsed.Make,
+                        cameraModel: parsed.Model,
+                        gpsLatitude: parsed.GPSLatitude,
+                        gpsLongitude: parsed.GPSLongitude
+                    };
+                }
+            } catch (e) {
+                console.warn("EXIF extraction failed:", e);
+            }
+
             updateProgress(10);
 
-            // 1. Get Presigned URL
+            // 2. Resize Images (Client-side)
+            const { resizeImage } = await import("@/lib/client-image");
+
+            // Original (Converted to WebP, Quality 95%, Original Size)
+            // Display (2000px, 90% quality)
+            // Thumb (400px, 70% quality)
+            const [originalVariant, displayVariant, thumbVariant] = await Promise.all([
+                resizeImage(file, 0, 0.95),
+                resizeImage(file, 2000, 0.90),
+                resizeImage(file, 400, 0.70)
+            ]);
+
+            updateProgress(20);
+
+            // 3. Get Presigned URLs (for all 3)
+            // Note: Original is now WebP too
             const urlRes = await fetch("/api/images/upload-url", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
                     filename,
-                    contentType: file.type,
+                    contentType: "image/webp", // We converted original to WebP
                     albumId
                 }),
             });
 
             if (!urlRes.ok) throw new Error("Failed to get upload URL");
-            const { url, key } = await urlRes.json();
+            const { urls, keys } = await urlRes.json();
 
             updateProgress(30);
 
-            // 2. Upload to S3 directly
-            const uploadRes = await fetch(url, {
-                method: "PUT",
-                headers: { "Content-Type": file.type },
-                body: file,
-            });
-
-            if (!uploadRes.ok) throw new Error(`Failed to upload to S3: ${uploadRes.statusText}`);
+            // 4. Upload to S3 directly (Parallel)
+            await Promise.all([
+                // Original (WebP)
+                fetch(urls.original, {
+                    method: "PUT",
+                    headers: { "Content-Type": "image/webp" },
+                    body: originalVariant.blob,
+                }),
+                // Display (WebP)
+                fetch(urls.display, {
+                    method: "PUT",
+                    headers: { "Content-Type": "image/webp" },
+                    body: displayVariant.blob,
+                }),
+                // Thumb (WebP)
+                fetch(urls.thumb, {
+                    method: "PUT",
+                    headers: { "Content-Type": "image/webp" },
+                    body: thumbVariant.blob,
+                })
+            ]);
 
             updateProgress(80);
 
-            // 3. Register Image in DB
-            // Note: We don't have EXIF or dimensions since we skipped sharp. 
-            // Ideally we'd parse this client-side or use a lambda trigger. 
-            // For now, sending basic info.
+            // 5. Register Image in DB
             const regRes = await fetch("/api/images/register", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
                     albumId,
-                    s3Key: key,
-                    mimeType: file.type,
-                    size: file.size,
+                    keys, // { original, display, thumb }
+                    mimeType: "image/webp",
+                    size: originalVariant.blob.size, // Use the new blob size
                     filename: filename,
                     folderId,
-                    width: 0, // Pending client-side extraction or lambda
-                    height: 0
+                    width: originalVariant.width,
+                    height: originalVariant.height,
+                    exif: exifData
                 }),
             });
 

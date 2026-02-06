@@ -25,7 +25,7 @@ export async function POST(request: Request) {
         const body = await request.json();
         const {
             albumId,
-            s3Key,
+            keys, // { original, display, thumb }
             mimeType,
             size,
             width,
@@ -35,7 +35,12 @@ export async function POST(request: Request) {
             exif
         } = body;
 
-        if (!albumId || !s3Key) {
+        // Backward compatibility or fallback if keys object missing
+        const s3KeyOriginal = keys?.original || body.s3KeyOriginal || body.s3Key; // Fallback
+        const s3KeyDisplay = keys?.display || body.s3KeyDisplay || s3KeyOriginal;
+        const s3KeyThumb = keys?.thumb || body.s3KeyThumb || s3KeyOriginal;
+
+        if (!albumId || !s3KeyOriginal) {
             return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
         }
 
@@ -53,10 +58,10 @@ export async function POST(request: Request) {
             albumId,
             folderId: folderId || null,
             uploaderId: userId,
-            s3KeyOriginal: s3Key,
-            s3KeyDisplay: s3Key, // Reuse original
-            s3KeyThumb: s3Key,   // Reuse original
-            s3Key: s3Key,        // Backward compatibility
+            s3KeyOriginal,
+            s3KeyDisplay,
+            s3KeyThumb,
+            s3Key: s3KeyOriginal,        // Backward compatibility
             mimeType: mimeType || "application/octet-stream",
             originalFilename: filename || "unknown",
             size: size || 0,
