@@ -111,7 +111,7 @@ export const activityLogs = pgTable("activity_logs", {
     folderId: uuid("folder_id"),
     action: text("action", {
         enum: [
-            "image_upload", "image_delete", "image_restore", "image_permanent_delete",
+            "image_upload", "image_delete", "image_restore", "image_permanent_delete", "image_update",
             "album_create", "album_update", "album_delete",
             "folder_create", "folder_update", "folder_delete",
             "member_join", "member_leave", "member_role_change"

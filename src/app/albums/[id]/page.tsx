@@ -3,7 +3,7 @@
 import { useEffect, useState, use } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, Lock, Globe, Plus, Upload, Loader2, Image as ImageIcon, Trash2, Star, Download, MoreVertical, LogOut, UserMinus, Camera, X, CheckSquare, Square, XCircle, ArrowUpDown, Folder, ChevronRight, FolderPlus, Edit2 } from "lucide-react";
+import { ArrowLeft, Lock, Globe, Plus, Upload, Loader2, Image as ImageIcon, Trash2, Star, Download, MoreVertical, LogOut, UserMinus, Camera, X, CheckSquare, Square, XCircle, ArrowUpDown, Folder, FolderOpen, ChevronRight, FolderPlus, Edit2 } from "lucide-react";
 import useSWR from "swr";
 import { fetcher } from "@/lib/fetcher";
 import { useAuth } from "@/components/providers/AuthProvider";
@@ -15,6 +15,7 @@ import { TrashDialog } from "@/components/TrashDialog";
 import { CreateFolderDialog } from "@/components/CreateFolderDialog";
 import { EditFolderDialog } from "@/components/EditFolderDialog";
 import { DeleteFolderDialog } from "@/components/DeleteFolderDialog";
+import { MoveToFolderDialog } from "@/components/MoveToFolderDialog";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogTrigger, DialogTitle } from "@/components/ui/dialog";
 import { VisuallyHidden } from "@radix-ui/react-visually-hidden";
@@ -73,6 +74,7 @@ export default function AlbumDetailPage({ params }: { params: Promise<{ id: stri
     const [currentFolderId, setCurrentFolderId] = useState<string | null>(null);
     const [editingFolder, setEditingFolder] = useState<Folder | null>(null);
     const [deletingFolder, setDeletingFolder] = useState<Folder | null>(null);
+    const [movingPhotosOpen, setMovingPhotosOpen] = useState(false);
 
     // Sorting state
     const [sortBy, setSortBy] = useState<'createdAt' | 'dateTaken'>('createdAt');
@@ -144,6 +146,8 @@ export default function AlbumDetailPage({ params }: { params: Promise<{ id: stri
         setSelectedImageIndex((prev) => (prev === null || prev === 0 ? images.length - 1 : prev - 1));
     };
 
+
+
     // Keyboard Navigation
     useEffect(() => {
         if (selectedImageIndex === null) return;
@@ -156,6 +160,41 @@ export default function AlbumDetailPage({ params }: { params: Promise<{ id: stri
         window.addEventListener("keydown", handleKeyDown);
         return () => window.removeEventListener("keydown", handleKeyDown);
     }, [selectedImageIndex, images.length]);
+
+    // --- Drag and Drop for Uploads (Page Level) ---
+    useEffect(() => {
+        const handleWindowDragOver = (e: DragEvent) => {
+            e.preventDefault();
+            // content-type check to distinguishing between files and other drag types
+            if (e.dataTransfer && e.dataTransfer.types.includes("Files")) {
+                setIsDragging(true);
+            }
+        };
+
+        const handleWindowDragLeave = (e: DragEvent) => {
+            e.preventDefault();
+            // Simple check: if leaving window or mouse released
+            if (e.clientX === 0 && e.clientY === 0) {
+                setIsDragging(false);
+            }
+        };
+
+        const handleWindowDrop = (e: DragEvent) => {
+            e.preventDefault();
+            setIsDragging(false);
+            // Drop is handled by the main div's onDrop handler to prevent duplicates
+        };
+
+        window.addEventListener('dragover', handleWindowDragOver);
+        window.addEventListener('dragleave', handleWindowDragLeave);
+        window.addEventListener('drop', handleWindowDrop);
+
+        return () => {
+            window.removeEventListener('dragover', handleWindowDragOver);
+            window.removeEventListener('dragleave', handleWindowDragLeave);
+            window.removeEventListener('drop', handleWindowDrop);
+        };
+    }, []);
 
 
     async function handleDeleteAlbum() {
@@ -334,6 +373,7 @@ export default function AlbumDetailPage({ params }: { params: Promise<{ id: stri
             updateProgress(100);
         } catch (err) {
             console.error(`Failed to upload ${filename}:`, err);
+            toast.error(`Failed to upload ${filename}`);
         }
     }
 
@@ -546,6 +586,9 @@ export default function AlbumDetailPage({ params }: { params: Promise<{ id: stri
 
 
 
+
+
+
     return (
         <div
             className="min-h-screen bg-gradient-to-b from-slate-50 to-blue-50/30 dark:from-slate-950 dark:to-slate-900 relative"
@@ -640,15 +683,7 @@ export default function AlbumDetailPage({ params }: { params: Promise<{ id: stri
                                 </Button>
                             </label>
                         )}
-                        <input
-                            id="upload-input"
-                            type="file"
-                            className="hidden"
-                            accept="image/*"
-                            multiple
-                            onChange={handleUpload}
-                            disabled={uploading || !canEdit}
-                        />
+
 
                         {/* Kebab Menu - Owner, Editor, or Viewer */}
                         {userRole && (
@@ -785,7 +820,55 @@ export default function AlbumDetailPage({ params }: { params: Promise<{ id: stri
                 {!currentFolderId && folders.length > 0 && (
                     <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 mb-8">
                         {folders.map(folder => (
-                            <div key={folder.id} className="relative group">
+                            <div
+                                key={folder.id}
+                                className="relative group"
+                                onDragOver={(e) => {
+                                    e.preventDefault();
+                                    e.stopPropagation(); // Stop page-level drag handler
+                                    e.currentTarget.classList.add('ring-2', 'ring-blue-500', 'scale-[1.02]');
+                                }}
+                                onDragLeave={(e) => {
+                                    e.preventDefault();
+                                    e.stopPropagation();
+                                    e.currentTarget.classList.remove('ring-2', 'ring-blue-500', 'scale-[1.02]');
+                                }}
+                                onDrop={async (e) => {
+                                    e.preventDefault();
+                                    e.stopPropagation(); // Stop page-level drop handler (no upload)
+                                    e.currentTarget.classList.remove('ring-2', 'ring-blue-500', 'scale-[1.02]');
+
+                                    // Handle drop (single image or bulk if I implement dragging a selection)
+                                    // For now, let's assume we drag a single image ID
+                                    const draggedImageId = e.dataTransfer.getData("text/plain");
+                                    if (!draggedImageId) return;
+
+                                    // Check if it's the current folder (move to self)
+                                    if (folder.id === currentFolderId) return;
+
+                                    try {
+                                        toast.info("Moving photo...");
+                                        const res = await fetch('/api/images/bulk', {
+                                            method: 'POST',
+                                            headers: { 'Content-Type': 'application/json' },
+                                            body: JSON.stringify({
+                                                action: 'move',
+                                                imageIds: [draggedImageId],
+                                                albumId,
+                                                targetFolderId: folder.id,
+                                            }),
+                                        });
+                                        if (res.ok) {
+                                            toast.success(`Moved to ${folder.name}`);
+                                            refreshAlbum();
+                                        } else {
+                                            toast.error("Failed to move photo");
+                                        }
+                                    } catch (err) {
+                                        toast.error("Error moving photo");
+                                    }
+                                }}
+                            >
                                 <button
                                     onClick={() => setCurrentFolderId(folder.id)}
                                     className="w-full flex flex-col items-center justify-center p-6 bg-white dark:bg-slate-800 rounded-2xl border border-slate-100 dark:border-slate-700 shadow-sm hover:shadow-md hover:border-blue-200 dark:hover:border-blue-800 transition-all text-center relative overflow-hidden"
@@ -848,6 +931,22 @@ export default function AlbumDetailPage({ params }: { params: Promise<{ id: stri
                         open={!!deletingFolder}
                         onOpenChange={(open) => !open && setDeletingFolder(null)}
                         onFolderDeleted={() => mutateAlbum()}
+                    />
+                )}
+
+                {movingPhotosOpen && (
+                    <MoveToFolderDialog
+                        albumId={albumId}
+                        folders={folders}
+                        selectedIds={selectedIds}
+                        currentFolderId={currentFolderId}
+                        open={movingPhotosOpen}
+                        onOpenChange={setMovingPhotosOpen}
+                        onSuccess={() => {
+                            setSelectedIds(new Set());
+                            setSelectMode(false);
+                            refreshAlbum();
+                        }}
                     />
                 )}
 
@@ -935,6 +1034,16 @@ export default function AlbumDetailPage({ params }: { params: Promise<{ id: stri
                                     className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-slate-600 dark:text-slate-300 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-full hover:bg-slate-50 dark:hover:bg-slate-700 transition-all shadow-sm"
                                 >
                                     {selectedIds.size === images.length ? 'Deselect All' : 'Select All'}
+                                </button>
+
+                                {/* Move Photos */}
+                                <button
+                                    onClick={() => setMovingPhotosOpen(true)}
+                                    disabled={selectedIds.size === 0 || bulkOperating}
+                                    className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-slate-600 dark:text-slate-300 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-full hover:bg-slate-50 dark:hover:bg-slate-700 transition-all shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                                >
+                                    <FolderOpen className="h-4 w-4" />
+                                    <span className="hidden sm:inline">Move</span>
                                 </button>
 
                                 {/* Download ZIP */}
@@ -1046,6 +1155,13 @@ export default function AlbumDetailPage({ params }: { params: Promise<{ id: stri
                                         className={`w-full overflow-hidden rounded-2xl bg-slate-100 dark:bg-slate-700 ${selectMode ? 'cursor-pointer' : 'cursor-zoom-in'} focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 shadow-sm hover:shadow-lg transition-shadow ${isSelected ? 'ring-2 ring-blue-500 ring-offset-2' : ''
                                             }`}
                                         disabled={isDeleting}
+                                        draggable={canEdit && !selectMode} // Enable dragging if editor and not selecting
+                                        onDragStart={(e) => {
+                                            if (canEdit && !selectMode) {
+                                                e.dataTransfer.setData("text/plain", image.id);
+                                                e.dataTransfer.effectAllowed = "move";
+                                            }
+                                        }}
                                     >
                                         {image.url ? (
                                             <img

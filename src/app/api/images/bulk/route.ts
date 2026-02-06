@@ -44,6 +44,8 @@ export async function POST(request: Request) {
             return handleBulkDelete(userId, body);
         } else if (body.action === "download") {
             return handleBulkDownload(userId, body);
+        } else if (body.action === "move") {
+            return handleBulkMove(userId, body);
         }
 
         return NextResponse.json({ error: "Invalid action" }, { status: 400 });
@@ -55,6 +57,57 @@ export async function POST(request: Request) {
         console.error("Bulk operation error:", error);
         return NextResponse.json({ error: "Internal Error" }, { status: 500 });
     }
+}
+
+const bulkMoveSchema = z.object({
+    action: z.literal("move"),
+    imageIds: z.array(z.string().uuid()).min(1).max(100),
+    albumId: z.string().uuid(),
+    targetFolderId: z.string().uuid().nullable(), // Nullable to move to root
+});
+
+async function handleBulkMove(userId: string, body: unknown) {
+    const { imageIds, albumId, targetFolderId } = bulkMoveSchema.parse(body);
+
+    const canEdit = await checkAlbumPermission(userId, albumId, "editor");
+    if (!canEdit) {
+        return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
+    // Verify images exist in album
+    const validImages = await db.query.images.findMany({
+        where: and(
+            inArray(images.id, imageIds),
+            eq(images.albumId, albumId),
+            isNull(images.deletedAt)
+        ),
+    });
+
+    if (validImages.length === 0) {
+        return NextResponse.json({ error: "No valid images to move" }, { status: 400 });
+    }
+
+    const validIds = validImages.map(img => img.id);
+
+    await db.update(images)
+        .set({ folderId: targetFolderId, updatedAt: new Date() })
+        .where(inArray(images.id, validIds));
+
+    await logActivities(
+        validImages.map(img => ({
+            userId,
+            albumId,
+            imageId: img.id,
+            folderId: targetFolderId || undefined,
+            action: "image_update" as const,
+            metadata: { move: true, fromFolder: img.folderId, toFolder: targetFolderId },
+        }))
+    );
+
+    return NextResponse.json({
+        success: true,
+        movedCount: validIds.length,
+    });
 }
 
 async function handleBulkDelete(userId: string, body: unknown) {

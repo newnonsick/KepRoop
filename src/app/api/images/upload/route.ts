@@ -9,6 +9,9 @@ import { db } from "@/db";
 import { images } from "@/db/schema";
 import { nanoid } from "nanoid";
 
+// Allow longer timeout for image processing (default is often 10s on Vercel)
+export const maxDuration = 60;
+
 async function getUserId() {
     const cookieStore = await cookies();
     const token = cookieStore.get("accessToken")?.value;
