@@ -34,6 +34,12 @@ export async function middleware(request: NextRequest) {
         return NextResponse.next();
     }
 
+    // Allow API Keys to bypass Edge Middleware (validation happens in route handler)
+    const authHeader = request.headers.get("Authorization");
+    if (authHeader?.startsWith("Bearer kp_") || authHeader?.startsWith("Api-Key ")) {
+        return NextResponse.next();
+    }
+
     // Validate Access Token
     const accessToken = request.cookies.get("accessToken")?.value;
     let isValid = false;

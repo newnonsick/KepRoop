@@ -15,6 +15,13 @@
       "when": 1770237055193,
       "tag": "0001_crazy_lucky_pierre",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1770647995037,
+      "tag": "0002_milky_payback",
+      "breakpoints": true
     }
   ]
 }

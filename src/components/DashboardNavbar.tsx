@@ -17,8 +17,9 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { SettingsDialog } from "@/components/SettingsDialog";
+import { ApiKeyDialog } from "@/components/ApiKeyDialog";
 import { toast } from "sonner";
-import { Settings } from "lucide-react";
+import { Settings, KeyRound } from "lucide-react";
 
 interface UserData {
     id: string;
@@ -35,6 +36,7 @@ export function DashboardNavbar() {
     const [loggingOut, setLoggingOut] = useState(false);
     const [confirmLogoutOpen, setConfirmLogoutOpen] = useState(false);
     const [settingsOpen, setSettingsOpen] = useState(false);
+    const [apiKeyDialogOpen, setApiKeyDialogOpen] = useState(false);
 
     const handleLogout = async () => {
         setLoggingOut(true);
@@ -96,6 +98,13 @@ export function DashboardNavbar() {
                                 <Settings className="mr-2 h-4 w-4" />
                                 Settings
                             </DropdownMenuItem>
+                            <DropdownMenuItem
+                                onClick={() => setApiKeyDialogOpen(true)}
+                                className="text-slate-700 dark:text-slate-300 focus:text-slate-800 dark:focus:text-slate-100 focus:bg-slate-50 dark:focus:bg-slate-800 rounded-lg mx-1 cursor-pointer"
+                            >
+                                <KeyRound className="mr-2 h-4 w-4" />
+                                API Keys
+                            </DropdownMenuItem>
                             <DropdownMenuSeparator className="bg-slate-100 dark:bg-slate-800" />
                             <DropdownMenuItem
                                 onClick={() => setConfirmLogoutOpen(true)}
@@ -125,6 +134,7 @@ export function DashboardNavbar() {
                 confirmText="Sign out"
             />
             <SettingsDialog open={settingsOpen} onOpenChange={setSettingsOpen} />
+            <ApiKeyDialog open={apiKeyDialogOpen} onOpenChange={setApiKeyDialogOpen} />
         </header>
     );
 }

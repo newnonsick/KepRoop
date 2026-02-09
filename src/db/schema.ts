@@ -220,4 +220,69 @@ export const albumsRelations = relations(albums, ({ one, many }) => ({
     invites: many(albumInvites),
     folders: many(folders),
     favoritedBy: many(favoriteAlbums),
+    apiKeys: many(apiKeys),
+}));
+
+// API Keys Table
+export const apiKeys = pgTable("api_keys", {
+    id: uuid("id").defaultRandom().primaryKey(),
+    userId: uuid("user_id").references(() => users.id, { onDelete: "cascade" }).notNull(),
+    keyHash: text("key_hash").notNull(), // Hashed API key
+    name: text("name").notNull(), // User-friendly name
+    prefix: text("prefix").notNull(), // First few chars for identification
+    rateLimit: integer("rate_limit").default(1000).notNull(), // Requests per minute
+    lastUsedAt: timestamp("last_used_at"),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    revokedAt: timestamp("revoked_at"), // Null = active, Non-null = revoked
+}, (table) => ({
+    userIdIdx: index("api_keys_user_id_idx").on(table.userId),
+    keyHashIdx: index("api_keys_key_hash_idx").on(table.keyHash),
+}));
+
+// API Key Logs Table
+export const apiKeyLogs = pgTable("api_key_logs", {
+    id: uuid("id").defaultRandom().primaryKey(),
+    keyId: uuid("key_id").references(() => apiKeys.id, { onDelete: "cascade" }).notNull(),
+    endpoint: text("endpoint").notNull(),
+    method: text("method").notNull(),
+    ip: text("ip"),
+    userAgent: text("user_agent"),
+    statusCode: integer("status_code").notNull(),
+    timestamp: timestamp("timestamp").defaultNow().notNull(),
+}, (table) => ({
+    keyIdIdx: index("api_key_logs_key_id_idx").on(table.keyId),
+    timestampIdx: index("api_key_logs_timestamp_idx").on(table.timestamp),
+}));
+
+// Rate Limits Table (for tracking usage windows)
+export const rateLimits = pgTable("rate_limits", {
+    keyId: uuid("key_id").references(() => apiKeys.id, { onDelete: "cascade" }).notNull(),
+    windowStart: timestamp("window_start").notNull(), // Start of the current minute window
+    requestCount: integer("request_count").default(0).notNull(),
+}, (table) => ({
+    pk: primaryKey({ columns: [table.keyId, table.windowStart] }),
+}));
+
+// API Keys Relations
+export const apiKeysRelations = relations(apiKeys, ({ one, many }) => ({
+    user: one(users, {
+        fields: [apiKeys.userId],
+        references: [users.id],
+    }),
+    logs: many(apiKeyLogs),
+    rateLimits: many(rateLimits),
+}));
+
+export const apiKeyLogsRelations = relations(apiKeyLogs, ({ one }) => ({
+    apiKey: one(apiKeys, {
+        fields: [apiKeyLogs.keyId],
+        references: [apiKeys.id],
+    }),
+}));
+
+export const rateLimitsRelations = relations(rateLimits, ({ one }) => ({
+    apiKey: one(apiKeys, {
+        fields: [rateLimits.keyId],
+        references: [apiKeys.id],
+    }),
 }));
