@@ -8,6 +8,57 @@ import { folders, images } from "@/db/schema";
 import { eq, and } from "drizzle-orm";
 import { z } from "zod";
 
+/**
+ * @swagger
+ * /api/albums/{id}/folders/{folderId}:
+ *   put:
+ *     tags:
+ *       - Albums
+ *     summary: Rename folder
+ *     description: Rename a folder.
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *       - in: path
+ *         name: folderId
+ *         required: true
+ *         schema:
+ *           type: string
+ *     requestBody:
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               name:
+ *                 type: string
+ *     responses:
+ *       200:
+ *         description: Folder renamed
+ *   delete:
+ *     tags:
+ *       - Albums
+ *     summary: Delete folder
+ *     description: Delete a folder.
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *       - in: path
+ *         name: folderId
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Folder deleted
+ */
+
 async function getUserId() {
     const cookieStore = await cookies();
     const token = cookieStore.get("accessToken")?.value;

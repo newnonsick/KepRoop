@@ -18,6 +18,50 @@ async function getUserId() {
 
 type Context = { params: Promise<{ id: string }> };
 
+/**
+ * @swagger
+ * /api/albums/{id}/trash:
+ *   get:
+ *     tags:
+ *       - Albums
+ *     summary: View trash
+ *     description: List deleted images in the album.
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: List of deleted images
+ *   delete:
+ *     tags:
+ *       - Albums
+ *     summary: Empty trash / Permanently delete
+ *     description: Permanently delete specific images from trash.
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     requestBody:
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - imageIds
+ *             properties:
+ *               imageIds:
+ *                 type: array
+ *                 items:
+ *                   type: string
+ *     responses:
+ *       200:
+ *         description: Images permanently deleted
+ */
 export async function GET(request: Request, context: Context) {
     const { id: albumId } = await context.params;
     const userId = await getUserId();

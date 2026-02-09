@@ -16,6 +16,32 @@ async function getUserId() {
 
 type Context = { params: Promise<{ id: string }> };
 
+/**
+ * @swagger
+ * /api/albums/{id}/activity:
+ *   get:
+ *     tags:
+ *       - Albums
+ *     summary: Get album activity
+ *     description: Get activity logs for an album.
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *       - in: query
+ *         name: cursor
+ *         schema:
+ *           type: string
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *     responses:
+ *       200:
+ *         description: Activity logs
+ */
 export async function GET(request: Request, context: Context) {
     const { id: albumId } = await context.params;
     const userId = await getUserId();

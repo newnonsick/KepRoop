@@ -23,6 +23,61 @@ async function getUserId() {
     return payload?.userId;
 }
 
+/**
+ * @swagger
+ * /api/albums:
+ *   get:
+ *     tags:
+ *       - Albums
+ *     summary: List albums
+ *     description: List albums with filtering, sorting, and pagination.
+ *     parameters:
+ *       - in: query
+ *         name: cursor
+ *         schema:
+ *           type: string
+ *         description: Cursor for pagination
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *           default: 12
+ *         description: Number of items to return
+ *       - in: query
+ *         name: filter
+ *         schema:
+ *           type: string
+ *           enum: [all, mine, shared, favorites]
+ *           default: all
+ *         description: Filter albums by ownership
+ *       - in: query
+ *         name: visibility
+ *         schema:
+ *           type: string
+ *           enum: [public, private]
+ *         description: Filter by visibility
+ *       - in: query
+ *         name: search
+ *         schema:
+ *           type: string
+ *         description: Search by title or description
+ *       - in: query
+ *         name: sortBy
+ *         schema:
+ *           type: string
+ *           default: albumDate
+ *         description: Sort field
+ *       - in: query
+ *         name: sortDir
+ *         schema:
+ *           type: string
+ *           enum: [asc, desc]
+ *           default: desc
+ *         description: Sort direction
+ *     responses:
+ *       200:
+ *         description: A list of albums
+ */
 export async function GET(request: Request) {
     const userId = await getUserId();
     if (!userId) {
@@ -332,6 +387,39 @@ export async function GET(request: Request) {
     });
 }
 
+/**
+ * @swagger
+ * /api/albums:
+ *   post:
+ *     tags:
+ *       - Albums
+ *     summary: Create album
+ *     description: Create a new album.
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - title
+ *             properties:
+ *               title:
+ *                 type: string
+ *               description:
+ *                 type: string
+ *               visibility:
+ *                 type: string
+ *                 enum: [public, private]
+ *               date:
+ *                 type: string
+ *                 format: date-time
+ *               coverImageKey:
+ *                 type: string
+ *     responses:
+ *       200:
+ *         description: Album created successfully
+ */
 export async function POST(request: Request) {
     const userId = await getUserId();
     if (!userId) {

@@ -15,6 +15,24 @@ async function getUserId() {
     return payload?.userId;
 }
 
+/**
+ * @swagger
+ * /api/images/{id}/download-url:
+ *   get:
+ *     tags:
+ *       - Images
+ *     summary: Get download URL
+ *     description: Get a signed URL for downloading an image.
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Download URL
+ */
 export async function GET(
     request: Request,
     { params }: { params: Promise<{ id: string }> }

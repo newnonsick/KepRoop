@@ -8,6 +8,9 @@ import { rotateApiKey } from "@/lib/auth/api-keys";
  * @swagger
  * /api/auth/api-keys/{id}/rotate:
  *   post:
+ *     tags:
+ *       - Auth
+ *     summary: Rotate API key
  *     description: Rotate an API key (revoke old, create new)
  *     parameters:
  *       - in: path

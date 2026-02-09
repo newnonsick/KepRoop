@@ -8,6 +8,9 @@ import { revokeApiKey } from "@/lib/auth/api-keys";
  * @swagger
  * /api/auth/api-keys/{id}:
  *   delete:
+ *     tags:
+ *       - Auth
+ *     summary: Revoke API key
  *     description: Revoke an API key
  *     parameters:
  *       - in: path

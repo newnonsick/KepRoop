@@ -15,6 +15,35 @@ async function getUserId() {
     return payload?.userId;
 }
 
+/**
+ * @swagger
+ * /api/images/upload-url:
+ *   post:
+ *     tags:
+ *       - Images
+ *     summary: Get upload URL
+ *     description: Generate presigned S3 URLs for client-side upload.
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - filename
+ *               - contentType
+ *               - albumId
+ *             properties:
+ *               filename:
+ *                 type: string
+ *               contentType:
+ *                 type: string
+ *               albumId:
+ *                 type: string
+ *     responses:
+ *       200:
+ *         description: Presigned URLs generated
+ */
 export async function POST(request: Request) {
     const userId = await getUserId();
     if (!userId) {

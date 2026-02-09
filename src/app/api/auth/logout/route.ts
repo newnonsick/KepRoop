@@ -32,6 +32,18 @@ import { eq } from "drizzle-orm";
 // `SignJWT` can set `jti`.
 // I will check `src/lib/auth/tokens.ts`.
 
+/**
+ * @swagger
+ * /api/auth/logout:
+ *   post:
+ *     tags:
+ *       - Auth
+ *     summary: User logout
+ *     description: Clears session cookies.
+ *     responses:
+ *       200:
+ *         description: Logout successful
+ */
 export async function POST() {
     // Placeholder logout - just clears cookies for now until I fix the token ID logic.
     // Ideally we should also remove from DB to prevent reuse if stolen.

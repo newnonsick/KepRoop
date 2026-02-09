@@ -33,6 +33,29 @@ async function getAuthenticatedUser() {
     return payload.userId;
 }
 
+/**
+ * @swagger
+ * /api/user/profile:
+ *   patch:
+ *     tags:
+ *       - User
+ *     summary: Update profile
+ *     description: Update user profile details (name).
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - name
+ *             properties:
+ *               name:
+ *                 type: string
+ *     responses:
+ *       200:
+ *         description: Profile updated
+ */
 export async function PATCH(request: Request) {
     try {
         const userId = await getAuthenticatedUser();
@@ -56,6 +79,31 @@ export async function PATCH(request: Request) {
     }
 }
 
+/**
+ * @swagger
+ * /api/user/profile:
+ *   put:
+ *     tags:
+ *       - User
+ *     summary: Update password
+ *     description: Change user password.
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - newPassword
+ *             properties:
+ *               currentPassword:
+ *                 type: string
+ *               newPassword:
+ *                 type: string
+ *     responses:
+ *       200:
+ *         description: Password updated
+ */
 export async function PUT(request: Request) {
     try {
         const userId = await getAuthenticatedUser();

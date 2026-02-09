@@ -15,6 +15,42 @@ async function getUserId() {
     return payload?.userId;
 }
 
+/**
+ * @swagger
+ * /api/images/register:
+ *   post:
+ *     tags:
+ *       - Images
+ *     summary: Register uploaded image
+ *     description: Register an image after successful client-side upload.
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - albumId
+ *               - s3KeyOriginal
+ *             properties:
+ *               albumId:
+ *                 type: string
+ *               s3KeyOriginal:
+ *                 type: string
+ *               filename:
+ *                 type: string
+ *               size:
+ *                 type: integer
+ *               width:
+ *                 type: integer
+ *               height:
+ *                 type: integer
+ *               folderId:
+ *                 type: string
+ *     responses:
+ *       200:
+ *         description: Image registered
+ */
 export async function POST(request: Request) {
     const userId = await getUserId();
     if (!userId) {

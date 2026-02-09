@@ -8,6 +8,49 @@ import { folders } from "@/db/schema";
 import { eq, and } from "drizzle-orm";
 import { z } from "zod";
 
+/**
+ * @swagger
+ * /api/albums/{id}/folders:
+ *   get:
+ *     tags:
+ *       - Albums
+ *     summary: List folders
+ *     description: List all folders in an album.
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: List of folders
+ *   post:
+ *     tags:
+ *       - Albums
+ *     summary: Create folder
+ *     description: Create a new folder in an album.
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     requestBody:
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - name
+ *             properties:
+ *               name:
+ *                 type: string
+ *     responses:
+ *       200:
+ *         description: Folder created
+ */
+
 async function getUserId() {
     const cookieStore = await cookies();
     const token = cookieStore.get("accessToken")?.value;

@@ -18,6 +18,63 @@ async function getUserId() {
 
 type Context = { params: Promise<{ id: string }> };
 
+/**
+ * @swagger
+ * /api/images/{id}:
+ *   get:
+ *     tags:
+ *       - Images
+ *     summary: Get image details
+ *     description: Get image download URLs and metadata.
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Image details
+ *   delete:
+ *     tags:
+ *       - Images
+ *     summary: Delete image
+ *     description: Soft delete an image.
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Image deleted
+ *   patch:
+ *     tags:
+ *       - Images
+ *     summary: Restore image
+ *     description: Restore a soft-deleted image.
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     requestBody:
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - action
+ *             properties:
+ *               action:
+ *                 type: string
+ *                 enum: [restore]
+ *     responses:
+ *       200:
+ *         description: Image restored
+ */
 export async function GET(request: Request, context: Context) {
     // Generate Signed URL for viewing
     const { id } = await context.params;

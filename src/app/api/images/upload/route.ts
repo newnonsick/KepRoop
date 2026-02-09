@@ -23,6 +23,34 @@ async function getUserId() {
 // Maximum file size: 50MB
 const MAX_FILE_SIZE = 50 * 1024 * 1024;
 
+/**
+ * @swagger
+ * /api/images/upload:
+ *   post:
+ *     tags:
+ *       - Images
+ *     summary: Upload image (Server-side)
+ *     description: Upload an image file directly to the server (processed via Sharp).
+ *     requestBody:
+ *       content:
+ *         multipart/form-data:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - file
+ *               - albumId
+ *             properties:
+ *               file:
+ *                 type: string
+ *                 format: binary
+ *               albumId:
+ *                 type: string
+ *               folderId:
+ *                 type: string
+ *     responses:
+ *       200:
+ *         description: Image uploaded and processed
+ */
 export async function POST(request: Request) {
     const userId = await getUserId();
     if (!userId) {

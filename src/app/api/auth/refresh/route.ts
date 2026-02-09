@@ -6,6 +6,20 @@ import { verifyRefreshToken, createAccessToken, createRefreshToken } from "@/lib
 import { hashPassword, verifyPassword } from "@/lib/auth/password";
 import { eq } from "drizzle-orm";
 
+/**
+ * @swagger
+ * /api/auth/refresh:
+ *   post:
+ *     tags:
+ *       - Auth
+ *     summary: Refresh access token
+ *     description: Uses the httpOnly refreshToken cookie to issue a new accessToken.
+ *     responses:
+ *       200:
+ *         description: Token refreshed successfully
+ *       401:
+ *         description: Invalid or expired refresh token
+ */
 export async function POST() {
     try {
         const cookieStore = await cookies();

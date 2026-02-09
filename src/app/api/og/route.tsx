@@ -7,6 +7,28 @@ import { generateDownloadUrl } from "@/lib/s3";
 
 export const runtime = 'nodejs'; // Required for pg/drizzle
 
+/**
+ * @swagger
+ * /api/og:
+ *   get:
+ *     tags:
+ *       - Utils
+ *     summary: Generate Open Graph Image
+ *     description: Generate a dynamic Open Graph image for an album.
+ *     parameters:
+ *       - in: query
+ *         name: albumId
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Image generated
+ *         content:
+ *           image/png:
+ *             schema:
+ *               type: string
+ *               format: binary
+ */
 export async function GET(request: Request) {
     try {
         const { searchParams } = new URL(request.url);

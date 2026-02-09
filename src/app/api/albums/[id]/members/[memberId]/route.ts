@@ -22,6 +22,59 @@ const updateMemberSchema = z.object({
 
 type Context = { params: Promise<{ id: string; memberId: string }> };
 
+/**
+ * @swagger
+ * /api/albums/{id}/members/{memberId}:
+ *   patch:
+ *     tags:
+ *       - Albums
+ *     summary: Update member role
+ *     description: Update the role of a member.
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *       - in: path
+ *         name: memberId
+ *         required: true
+ *         schema:
+ *           type: string
+ *     requestBody:
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - role
+ *             properties:
+ *               role:
+ *                 type: string
+ *                 enum: [viewer, editor, owner]
+ *     responses:
+ *       200:
+ *         description: Role updated
+ *   delete:
+ *     tags:
+ *       - Albums
+ *     summary: Remove member
+ *     description: Remove a member from the album or leave the album.
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *       - in: path
+ *         name: memberId
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Member removed
+ */
 export async function PATCH(request: Request, context: Context) {
     const { id: albumId, memberId } = await context.params;
     const userId = await getUserId();

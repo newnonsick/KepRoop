@@ -25,6 +25,39 @@ const inviteSchema = z.object({
 
 type Context = { params: Promise<{ id: string }> };
 
+/**
+ * @swagger
+ * /api/albums/{id}/invite:
+ *   post:
+ *     tags:
+ *       - Albums
+ *     summary: Create invite
+ *     description: Generate an invite link.
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     requestBody:
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - role
+ *             properties:
+ *               role:
+ *                 type: string
+ *                 enum: [viewer, editor]
+ *               maxUse:
+ *                 type: integer
+ *               expiresInMinutes:
+ *                 type: integer
+ *     responses:
+ *       200:
+ *         description: Invite created
+ */
 export async function POST(request: Request, context: Context) {
     const { id: albumId } = await context.params;
     const userId = await getUserId();
@@ -103,6 +136,35 @@ export async function POST(request: Request, context: Context) {
 }
 
 
+/**
+ * @swagger
+ * /api/albums/{id}/invite:
+ *   delete:
+ *     tags:
+ *       - Albums
+ *     summary: Revoke invite
+ *     description: Revoke an existing invite link.
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     requestBody:
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - role
+ *             properties:
+ *               role:
+ *                 type: string
+ *                 enum: [viewer, editor]
+ *     responses:
+ *       200:
+ *         description: Invite revoked
+ */
 export async function DELETE(request: Request, context: Context) {
     const { id: albumId } = await context.params;
     const userId = await getUserId();
@@ -139,6 +201,30 @@ export async function DELETE(request: Request, context: Context) {
 }
 
 
+/**
+ * @swagger
+ * /api/albums/{id}/invite:
+ *   get:
+ *     tags:
+ *       - Albums
+ *     summary: Get invite
+ *     description: Get the current active invite link for a specific role.
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *       - in: query
+ *         name: role
+ *         required: true
+ *         schema:
+ *           type: string
+ *           enum: [viewer, editor]
+ *     responses:
+ *       200:
+ *         description: Invite details
+ */
 export async function GET(request: Request, context: Context) {
     const { id: albumId } = await context.params;
     const userId = await getUserId();

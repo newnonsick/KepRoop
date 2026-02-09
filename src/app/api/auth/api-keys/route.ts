@@ -8,6 +8,9 @@ import { generateApiKey, listApiKeys } from "@/lib/auth/api-keys";
  * @swagger
  * /api/auth/api-keys:
  *   get:
+ *     tags:
+ *       - Auth
+ *     summary: List API keys
  *     description: List all API keys for the authenticated user
  *     responses:
  *       200:
@@ -34,6 +37,9 @@ export async function GET(request: Request) {
  * @swagger
  * /api/auth/api-keys:
  *   post:
+ *     tags:
+ *       - Auth
+ *     summary: Create API key
  *     description: Create a new API key
  *     requestBody:
  *       content:

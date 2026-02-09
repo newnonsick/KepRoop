@@ -15,6 +15,24 @@ async function getUserId() {
     return payload?.userId;
 }
 
+/**
+ * @swagger
+ * /api/albums/{id}/favorite:
+ *   post:
+ *     tags:
+ *       - Albums
+ *     summary: Toggle favorite
+ *     description: Add or remove album from favorites.
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Favorite status toggled
+ */
 export async function POST(
     request: Request,
     { params }: { params: Promise<{ id: string }> } // Params are now a Promise in Next.js 15

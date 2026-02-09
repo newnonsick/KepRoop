@@ -26,6 +26,26 @@ const updateAlbumSchema = z.object({
 
 type Context = { params: Promise<{ id: string }> };
 
+/**
+ * @swagger
+ * /api/albums/{id}:
+ *   get:
+ *     tags:
+ *       - Albums
+ *     summary: Get album details
+ *     description: Get album details including images and folders.
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Album details
+ *       404:
+ *         description: Album not found
+ */
 export async function GET(request: Request, context: Context) {
     const { id: albumId } = await context.params;
     const userId = await getUserId();
@@ -189,6 +209,41 @@ export async function GET(request: Request, context: Context) {
     });
 }
 
+/**
+ * @swagger
+ * /api/albums/{id}:
+ *   put:
+ *     tags:
+ *       - Albums
+ *     summary: Update album
+ *     description: Update album metadata.
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               title:
+ *                 type: string
+ *               description:
+ *                 type: string
+ *               visibility:
+ *                 type: string
+ *                 enum: [public, private]
+ *               albumDate:
+ *                 type: string
+ *                 format: date-time
+ *     responses:
+ *       200:
+ *         description: Album updated
+ */
 export async function PUT(request: Request, context: Context) {
     const { id: albumId } = await context.params;
     const userId = await getUserId();
@@ -247,6 +302,24 @@ export async function PUT(request: Request, context: Context) {
     }
 }
 
+/**
+ * @swagger
+ * /api/albums/{id}:
+ *   delete:
+ *     tags:
+ *       - Albums
+ *     summary: Delete album
+ *     description: Delete an album and all its contents.
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Album deleted
+ */
 export async function DELETE(request: Request, context: Context) {
     const { id: albumId } = await context.params;
     const userId = await getUserId();

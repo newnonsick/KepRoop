@@ -30,6 +30,40 @@ const bulkDownloadSchema = z.object({
     albumId: z.string().uuid(),
 });
 
+/**
+ * @swagger
+ * /api/images/bulk:
+ *   post:
+ *     tags:
+ *       - Images
+ *     summary: Bulk operations
+ *     description: Perform bulk delete, download, or move operations.
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - action
+ *               - imageIds
+ *               - albumId
+ *             properties:
+ *               action:
+ *                 type: string
+ *                 enum: [delete, download, move]
+ *               imageIds:
+ *                 type: array
+ *                 items:
+ *                   type: string
+ *               albumId:
+ *                 type: string
+ *               targetFolderId:
+ *                 type: string
+ *     responses:
+ *       200:
+ *         description: Operation successful
+ */
 export async function POST(request: Request) {
     const userId = await getUserId();
     if (!userId) {

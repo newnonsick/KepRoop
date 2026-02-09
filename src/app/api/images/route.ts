@@ -23,6 +23,36 @@ const confirmSchema = z.object({
     height: z.number().optional(),
 });
 
+/**
+ * @swagger
+ * /api/images:
+ *   post:
+ *     tags:
+ *       - Images
+ *     summary: Confirm upload
+ *     description: Manually confirm an image upload.
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - albumId
+ *               - s3Key
+ *             properties:
+ *               albumId:
+ *                 type: string
+ *               s3Key:
+ *                 type: string
+ *               mimeType:
+ *                 type: string
+ *               size:
+ *                 type: integer
+ *     responses:
+ *       200:
+ *         description: Image confirmed
+ */
 export async function POST(request: Request) {
     const userId = await getUserId();
     if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });

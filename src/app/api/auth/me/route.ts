@@ -11,6 +11,23 @@ import { db } from "@/db";
 import { users, refreshTokens } from "@/db/schema";
 import { eq } from "drizzle-orm";
 
+/**
+ * @swagger
+ * /api/auth/me:
+ *   get:
+ *     tags:
+ *       - Auth
+ *     summary: Get current user
+ *     description: Returns the currently authenticated user based on cookies or tokens.
+ *     security:
+ *       - CookieAuth: []
+ *       - BearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Current user data
+ *       401:
+ *         description: Not authenticated
+ */
 export async function GET() {
     const cookieStore = await cookies();
     const accessToken = cookieStore.get("accessToken")?.value;

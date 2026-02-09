@@ -19,6 +19,34 @@ const acceptSchema = z.object({
     code: z.string(),
 });
 
+/**
+ * @swagger
+ * /api/invites/accept:
+ *   post:
+ *     tags:
+ *       - Invites
+ *     summary: Accept invite
+ *     description: Accept an album invite code.
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - code
+ *             properties:
+ *               code:
+ *                 type: string
+ *                 description: Invite code (format id.secret)
+ *     responses:
+ *       200:
+ *         description: Invite accepted
+ *       400:
+ *         description: Invalid code
+ *       410:
+ *         description: Invite expired or limit reached
+ */
 export async function POST(request: Request) {
     const userId = await getUserId();
 

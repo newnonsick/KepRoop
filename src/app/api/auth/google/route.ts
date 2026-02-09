@@ -15,6 +15,29 @@ const googleSchema = z.object({
 const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID!;
 const JWKS = createRemoteJWKSet(new URL('https://www.googleapis.com/oauth2/v3/certs'));
 
+/**
+ * @swagger
+ * /api/auth/google:
+ *   post:
+ *     tags:
+ *       - Auth
+ *     summary: Google Login/Register
+ *     description: Exchanges a Google ID Token for a session.
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - idToken
+ *             properties:
+ *               idToken:
+ *                 type: string
+ *     responses:
+ *       200:
+ *         description: Authentication successful
+ */
 export async function POST(request: Request) {
     try {
         const body = await request.json();
