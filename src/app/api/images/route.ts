@@ -1,18 +1,7 @@
 import { NextResponse } from "next/server";
-import { cookies } from "next/headers";
-import { verifyAccessToken } from "@/lib/auth/tokens";
-import { checkAlbumPermission } from "@/lib/auth/rbac";
-import { db } from "@/db";
-import { images } from "@/db/schema";
 import { z } from "zod";
-
-async function getUserId() {
-    const cookieStore = await cookies();
-    const token = cookieStore.get("accessToken")?.value;
-    if (!token) return null;
-    const payload = await verifyAccessToken(token);
-    return payload?.userId;
-}
+import { getAuthenticatedUser } from "@/lib/auth/session";
+import { ImageService } from "@/lib/services/image.service";
 
 const confirmSchema = z.object({
     albumId: z.string().uuid(),
@@ -54,34 +43,23 @@ const confirmSchema = z.object({
  *         description: Image confirmed
  */
 export async function POST(request: Request) {
-    const userId = await getUserId();
+    const userId = await getAuthenticatedUser();
     if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
     try {
         const body = await request.json();
-        const { albumId, s3Key, mimeType, size, width, height } = confirmSchema.parse(body);
+        const data = confirmSchema.parse(body);
 
-        const canUpload = await checkAlbumPermission(userId, albumId, "editor");
-        if (!canUpload) {
-            return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-        }
-
-        // Insert into DB
-        const [image] = await db.insert(images).values({
-            albumId,
-            uploaderId: userId,
-            s3Key,
-            mimeType,
-            size,
-            width,
-            height,
-        }).returning();
+        const image = await ImageService.confirmUpload(userId, data);
 
         return NextResponse.json({ image });
 
     } catch (error) {
         if (error instanceof z.ZodError) {
             return NextResponse.json({ error: error.issues }, { status: 400 });
+        }
+        if (error instanceof Error && error.message === "Forbidden") {
+            return NextResponse.json({ error: "Forbidden" }, { status: 403 });
         }
         console.error(error);
         return NextResponse.json({ error: "Internal Error" }, { status: 500 });

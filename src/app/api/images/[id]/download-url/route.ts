@@ -6,13 +6,10 @@ import { generateDownloadUrl } from "@/lib/s3";
 import { db } from "@/db";
 import { images } from "@/db/schema";
 import { eq } from "drizzle-orm";
+import { getAuthenticatedUser } from "@/lib/auth/session";
 
 async function getUserId() {
-    const cookieStore = await cookies();
-    const token = cookieStore.get("accessToken")?.value;
-    if (!token) return null;
-    const payload = await verifyAccessToken(token);
-    return payload?.userId;
+    return getAuthenticatedUser();
 }
 
 /**

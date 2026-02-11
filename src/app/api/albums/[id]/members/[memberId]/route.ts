@@ -6,13 +6,10 @@ import { albumMembers, albums } from "@/db/schema";
 import { checkAlbumPermission, getAlbumRole } from "@/lib/auth/rbac";
 import { eq, and } from "drizzle-orm";
 import { z } from "zod";
+import { getAuthenticatedUser } from "@/lib/auth/session";
 
 async function getUserId() {
-    const cookieStore = await cookies();
-    const token = cookieStore.get("accessToken")?.value;
-    if (!token) return null;
-    const payload = await verifyAccessToken(token);
-    return payload?.userId;
+    return getAuthenticatedUser();
 }
 
 // Update schema to include 'owner'

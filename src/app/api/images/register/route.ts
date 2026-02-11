@@ -6,13 +6,10 @@ import { checkAlbumPermission } from "@/lib/auth/rbac";
 import { logActivity } from "@/lib/activity";
 import { db } from "@/db";
 import { images } from "@/db/schema";
+import { getAuthenticatedUser } from "@/lib/auth/session";
 
 async function getUserId() {
-    const cookieStore = await cookies();
-    const token = cookieStore.get("accessToken")?.value;
-    if (!token) return null;
-    const payload = await verifyAccessToken(token);
-    return payload?.userId;
+    return getAuthenticatedUser();
 }
 
 /**

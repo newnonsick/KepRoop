@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { headers, cookies } from "next/headers";
 import { verifyAccessToken } from "@/lib/auth/tokens";
 import { generateApiKey, listApiKeys } from "@/lib/auth/api-keys";
+import { getAuthenticatedUser } from "@/lib/auth/session";
 
 /**
  * @swagger
@@ -11,25 +12,21 @@ import { generateApiKey, listApiKeys } from "@/lib/auth/api-keys";
  *     tags:
  *       - Auth
  *     summary: List API keys
- *     description: List all API keys for the authenticated user
+ *     description: List all API keys for the authenticated user.
  *     responses:
  *       200:
- *         description: A list of API keys
+ *         description: List of API keys
+ *       401:
+ *         description: Unauthorized
  */
 export async function GET(request: Request) {
-    const cookieStore = await cookies();
-    const token = cookieStore.get("accessToken")?.value;
+    const userId = await getAuthenticatedUser();
 
-    if (!token) {
+    if (!userId) {
         return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const payload = await verifyAccessToken(token);
-    if (!payload?.userId) {
-        return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
-    const keys = await listApiKeys(payload.userId);
+    const keys = await listApiKeys(userId);
     return NextResponse.json(keys);
 }
 
@@ -54,22 +51,16 @@ export async function GET(request: Request) {
  *         description: The created API key (only shown once)
  */
 export async function POST(request: Request) {
-    const cookieStore = await cookies();
-    const token = cookieStore.get("accessToken")?.value;
+    const userId = await getAuthenticatedUser();
 
-    if (!token) {
-        return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
-    const payload = await verifyAccessToken(token);
-    if (!payload?.userId) {
+    if (!userId) {
         return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
     const body = await request.json();
     const name = body.name || "My API Key";
 
-    const { key, record } = await generateApiKey(payload.userId, name);
+    const { key, record } = await generateApiKey(userId, name);
 
     return NextResponse.json({ key, record });
 }

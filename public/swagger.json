@@ -37,6 +37,72 @@
     }
   },
   "paths": {
+    "0": {
+      "0": "/"
+    },
+    "1": {
+      "0": "/"
+    },
+    "2": {
+      "0": " "
+    },
+    "3": {
+      "0": "."
+    },
+    "4": {
+      "0": "."
+    },
+    "5": {
+      "0": "."
+    },
+    "6": {
+      "0": " "
+    },
+    "7": {
+      "0": "("
+    },
+    "8": {
+      "0": "k"
+    },
+    "9": {
+      "0": "e"
+    },
+    "10": {
+      "0": "e"
+    },
+    "11": {
+      "0": "p"
+    },
+    "12": {
+      "0": " "
+    },
+    "13": {
+      "0": "c"
+    },
+    "14": {
+      "0": "o"
+    },
+    "15": {
+      "0": "m"
+    },
+    "16": {
+      "0": "m"
+    },
+    "17": {
+      "0": "e"
+    },
+    "18": {
+      "0": "n"
+    },
+    "19": {
+      "0": "t"
+    },
+    "20": {
+      "0": "s"
+    },
+    "21": {
+      "0": ")"
+    },
     "/api/albums/{id}/activity": {
       "get": {
         "tags": [
@@ -270,12 +336,6 @@
                       "viewer",
                       "editor"
                     ]
-                  },
-                  "maxUse": {
-                    "type": "integer"
-                  },
-                  "expiresInMinutes": {
-                    "type": "integer"
                   }
                 }
               }
@@ -777,64 +837,19 @@
         }
       }
     },
-    "/api/auth/api-keys/{id}/rotate": {
-      "post": {
-        "tags": [
-          "Auth"
-        ],
-        "summary": "Rotate API key",
-        "description": "Rotate an API key (revoke old, create new)",
-        "parameters": [
-          {
-            "in": "path",
-            "name": "id",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "The new API key"
-          }
-        }
-      }
-    },
-    "/api/auth/api-keys/{id}": {
-      "delete": {
-        "tags": [
-          "Auth"
-        ],
-        "summary": "Revoke API key",
-        "description": "Revoke an API key",
-        "parameters": [
-          {
-            "in": "path",
-            "name": "id",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Success"
-          }
-        }
-      }
-    },
     "/api/auth/api-keys": {
       "get": {
         "tags": [
           "Auth"
         ],
         "summary": "List API keys",
-        "description": "List all API keys for the authenticated user",
+        "description": "List all API keys for the authenticated user.",
         "responses": {
           "200": {
-            "description": "A list of API keys"
+            "description": "List of API keys"
+          },
+          "401": {
+            "description": "Unauthorized"
           }
         }
       },
@@ -1109,6 +1124,9 @@
         "responses": {
           "200": {
             "description": "Image details"
+          },
+          "404": {
+            "description": "Not found"
           }
         }
       },
@@ -1211,9 +1229,6 @@
                     }
                   },
                   "albumId": {
-                    "type": "string"
-                  },
-                  "targetFolderId": {
                     "type": "string"
                   }
                 }
@@ -1367,7 +1382,7 @@
           "Images"
         ],
         "summary": "Upload image (Server-side)",
-        "description": "Upload an image file directly to the server (processed via Sharp).",
+        "description": "Upload an image file directly to the server.",
         "requestBody": {
           "content": {
             "multipart/form-data": {
@@ -1418,8 +1433,7 @@
                 ],
                 "properties": {
                   "code": {
-                    "type": "string",
-                    "description": "Invite code (format id.secret)"
+                    "type": "string"
                   }
                 }
               }
@@ -1429,12 +1443,6 @@
         "responses": {
           "200": {
             "description": "Invite accepted"
-          },
-          "400": {
-            "description": "Invalid code"
-          },
-          "410": {
-            "description": "Invite expired or limit reached"
           }
         }
       }
@@ -1500,37 +1508,6 @@
         "responses": {
           "200": {
             "description": "Password updated"
-          }
-        }
-      }
-    },
-    "/api/og": {
-      "get": {
-        "tags": [
-          "Utils"
-        ],
-        "summary": "Generate Open Graph Image",
-        "description": "Generate a dynamic Open Graph image for an album.",
-        "parameters": [
-          {
-            "in": "query",
-            "name": "albumId",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Image generated",
-            "content": {
-              "image/png": {
-                "schema": {
-                  "type": "string",
-                  "format": "binary"
-                }
-              }
-            }
           }
         }
       }

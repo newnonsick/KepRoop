@@ -1,20 +1,7 @@
 import { NextResponse } from "next/server";
-import { cookies } from "next/headers";
-import { verifyAccessToken } from "@/lib/auth/tokens";
-import { db } from "@/db";
-import { albums, images, folders } from "@/db/schema";
-import { checkAlbumPermission } from "@/lib/auth/rbac";
 import { z } from "zod";
-import { eq, asc, desc } from "drizzle-orm";
-
-// Helper
-async function getUserId() {
-    const cookieStore = await cookies();
-    const token = cookieStore.get("accessToken")?.value;
-    if (!token) return null;
-    const payload = await verifyAccessToken(token);
-    return payload?.userId;
-}
+import { getAuthenticatedUser } from "@/lib/auth/session";
+import { AlbumService } from "@/lib/services/album.service";
 
 const updateAlbumSchema = z.object({
     title: z.string().min(1).optional(),
@@ -48,165 +35,31 @@ type Context = { params: Promise<{ id: string }> };
  */
 export async function GET(request: Request, context: Context) {
     const { id: albumId } = await context.params;
-    const userId = await getUserId();
+    const userId = await getAuthenticatedUser();
 
-    // Parse sort parameters
     const { searchParams } = new URL(request.url);
-    const sortBy = searchParams.get('sortBy') || 'createdAt'; // 'dateTaken' or 'createdAt'
-    const sortDir = searchParams.get('sortDir') || 'desc'; // 'asc' or 'desc'
+    const sortBy = searchParams.get('sortBy') || 'createdAt';
+    const sortDir = searchParams.get('sortDir') || 'desc';
 
-    if (!userId) {
-        const album = await db.query.albums.findFirst({ where: eq(albums.id, albumId) });
-        if (!album) return NextResponse.json({ error: "Not found" }, { status: 404 });
-
-        let hasAccess = album.visibility === "public";
-
-        // Check guest access
-        if (!hasAccess) {
-            const cookieStore = await cookies();
-            const guestToken = cookieStore.get("keproop_guest_access")?.value;
-            console.log(`[GuestDebug] Checking guest access for album ${albumId}. Token present: ${!!guestToken}`);
-
-            if (guestToken) {
-                const { verifyGuestToken } = await import("@/lib/auth/tokens");
-                const payload = await verifyGuestToken(guestToken);
-                console.log(`[GuestDebug] Token verified. Payload:`, payload);
-
-                if (payload && payload.allowedAlbums.includes(albumId)) {
-                    console.log(`[GuestDebug] Access granted via guest token`);
-                    hasAccess = true;
-                } else {
-                    console.log(`[GuestDebug] Access denied. Album ID not in allowed list.`);
-                }
-            }
+    try {
+        const result = await AlbumService.getAlbum(userId, albumId, { sortBy, sortDir });
+        if (!result) {
+            return NextResponse.json({ error: "Not found" }, { status: 404 });
         }
-
-        if (!hasAccess) {
-            return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+        return NextResponse.json(result);
+    } catch (error: any) {
+        if (error.message === "Forbidden") {
+            // Check if user is unauthorized (401) or forbidden (403)
+            // Logic in service checks guest access too. 
+            // If userId is null and service throws Forbidden, it's 401/403 depending on if they are logged in?
+            // Usually if not logged in -> 401. If logged in but no access -> 403.
+            // Service handles userId | null.
+            if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+            return NextResponse.json({ error: "Forbidden" }, { status: 403 });
         }
-
-        // Public album - fetch with images and return full data
-        const publicAlbum = await db.query.albums.findFirst({
-            where: eq(albums.id, albumId),
-            with: {
-                images: {
-                    where: (images, { isNull }) => isNull(images.deletedAt),
-                    orderBy: (images, { asc }) => [asc(images.createdAt)]
-                },
-                folders: {
-                    orderBy: (folders, { asc }) => [asc(folders.name)]
-                }
-            }
-        });
-
-        if (!publicAlbum) return NextResponse.json({ error: "Not found" }, { status: 404 });
-
-        const { generateDownloadUrl } = await import("@/lib/s3");
-        const imagesWithUrls = await Promise.all(publicAlbum.images.map(async (img: typeof images.$inferSelect) => ({
-            ...img,
-            url: await generateDownloadUrl(img.s3KeyThumb || img.s3KeyDisplay || img.s3Key!),
-            thumbUrl: img.s3KeyThumb ? await generateDownloadUrl(img.s3KeyThumb) : null,
-            displayUrl: img.s3KeyDisplay ? await generateDownloadUrl(img.s3KeyDisplay) : null,
-            originalUrl: img.s3KeyOriginal ? await generateDownloadUrl(img.s3KeyOriginal) : (img.s3Key ? await generateDownloadUrl(img.s3Key) : null),
-        })));
-
-        let coverImageUrl = null;
-        if (publicAlbum.coverImageId) {
-            const coverImage = imagesWithUrls.find(img => img.id === publicAlbum.coverImageId);
-            coverImageUrl = coverImage?.url || null;
-        }
-        if (!coverImageUrl && imagesWithUrls.length > 0) {
-            coverImageUrl = imagesWithUrls[0].url;
-        }
-
-        return NextResponse.json({
-            album: {
-                ...publicAlbum,
-                images: imagesWithUrls,
-                coverImageUrl,
-            },
-            userRole: "viewer" // Public viewers are read-only
-        });
+        console.error(error);
+        return NextResponse.json({ error: "Internal Error" }, { status: 500 });
     }
-
-    // Check RBAC
-    const hasAccess = await checkAlbumPermission(userId, albumId, "viewer");
-    if (!hasAccess) {
-        return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-    }
-
-    // Fetch album with images
-    const album = await db.query.albums.findFirst({
-        where: eq(albums.id, albumId),
-        with: {
-            images: {
-                where: (images, { isNull }) => isNull(images.deletedAt),
-                orderBy: (images, { asc }) => [asc(images.createdAt)]
-            },
-            folders: {
-                orderBy: (folders, { asc }) => [asc(folders.name)]
-            }
-        }
-    });
-
-    if (!album) return NextResponse.json({ error: "Not found" }, { status: 404 });
-
-    const { generateDownloadUrl } = await import("@/lib/s3");
-
-    const imagesWithUrls = await Promise.all(album.images.map(async (img: typeof images.$inferSelect) => {
-        return {
-            ...img,
-            url: await generateDownloadUrl(img.s3KeyThumb || img.s3KeyDisplay || img.s3Key!),
-            thumbUrl: img.s3KeyThumb ? await generateDownloadUrl(img.s3KeyThumb) : null,
-            displayUrl: img.s3KeyDisplay ? await generateDownloadUrl(img.s3KeyDisplay) : null,
-            originalUrl: img.s3KeyOriginal ? await generateDownloadUrl(img.s3KeyOriginal) : (img.s3Key ? await generateDownloadUrl(img.s3Key) : null),
-        };
-    }));
-
-    // Sort images based on query params
-    const sortedImages = [...imagesWithUrls].sort((a, b) => {
-        let aVal: Date | null = null;
-        let bVal: Date | null = null;
-
-        if (sortBy === 'dateTaken') {
-            aVal = a.dateTaken ? new Date(a.dateTaken) : null;
-            bVal = b.dateTaken ? new Date(b.dateTaken) : null;
-        } else {
-            aVal = a.createdAt ? new Date(a.createdAt) : null;
-            bVal = b.createdAt ? new Date(b.createdAt) : null;
-        }
-
-        // Handle nulls - push them to the end
-        if (!aVal && !bVal) return 0;
-        if (!aVal) return 1;
-        if (!bVal) return -1;
-
-        const comparison = aVal.getTime() - bVal.getTime();
-        return sortDir === 'asc' ? comparison : -comparison;
-    });
-
-    // Get cover image URL (use coverImageId or first image as fallback)
-    let coverImageUrl = null;
-    if (album.coverImageId) {
-        const coverImage = sortedImages.find(img => img.id === album.coverImageId);
-        coverImageUrl = coverImage?.url || null;
-    }
-    if (!coverImageUrl && sortedImages.length > 0) {
-        coverImageUrl = sortedImages[0].url;
-    }
-
-    // Get user role for permission display in UI
-    const { getAlbumRole } = await import("@/lib/auth/rbac");
-    const userRole = userId ? await getAlbumRole(userId, albumId) : "viewer";
-
-    return NextResponse.json({
-        album: {
-            ...album,
-            images: sortedImages,
-            coverImageUrl,
-        },
-        userRole
-    });
 }
 
 /**
@@ -246,58 +99,34 @@ export async function GET(request: Request, context: Context) {
  */
 export async function PUT(request: Request, context: Context) {
     const { id: albumId } = await context.params;
-    const userId = await getUserId();
+    const userId = await getAuthenticatedUser();
 
     if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-
-    const hasAccess = await checkAlbumPermission(userId, albumId, "editor"); // Assuming editors can update metadata? 
-    // Plan said: "Update Album - Check Owner/Editor".
-    // Usually Owner only updates visibility? Or Editor too?
-    // Let's allow Editor to update title/description, Owner for visibility?
-    // Start with Editor for now.
-
-    if (!hasAccess) {
-        return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-    }
 
     try {
         const body = await request.json();
         const data = updateAlbumSchema.parse(body);
 
-        // If visibility change, check OWNER
-        if (data.visibility) {
-            const isOwner = await checkAlbumPermission(userId, albumId, "owner");
-            if (!isOwner) return NextResponse.json({ error: "Only owner can change visibility" }, { status: 403 });
-        }
+        // Filter out undefined
+        const cleanData: any = {};
+        if (data.title !== undefined) cleanData.title = data.title;
+        if (data.description !== undefined) cleanData.description = data.description;
+        if (data.visibility !== undefined) cleanData.visibility = data.visibility;
+        if (data.coverImageId !== undefined) cleanData.coverImageId = data.coverImageId;
+        if (data.albumDate !== undefined) cleanData.albumDate = data.albumDate;
 
-        const [updated] = await db.update(albums).set({
-            ...data,
-            // updatedAt: new Date() // handled by defaultNow()? No, usually manual or trigger. Drizzle defaultNow is creation mostly? No, schema says defaultNow. but that's SQL default. update doesn't trigger it unless `onUpdateNow`.
-            // My schema said `updatedAt: timestamp("updated_at").defaultNow().notNull()`.
-            // Drizzle `.$onUpdate(() => new Date())` is better.
-            // I'll manually set it for now.
-            updatedAt: new Date(),
-        })
-            .where(eq(albums.id, albumId))
-            .returning();
+        const album = await AlbumService.updateAlbum(userId, albumId, cleanData);
 
-        // LOGGING: Album Update
-        const { logActivity } = await import("@/lib/activity");
-        await logActivity({
-            userId,
-            albumId,
-            action: "album_update",
-            metadata: {
-                changes: Object.keys(data)
-            }
-        });
+        return NextResponse.json({ album });
 
-        return NextResponse.json({ album: updated });
-
-    } catch (error) {
+    } catch (error: any) {
         if (error instanceof z.ZodError) {
             return NextResponse.json({ error: error.issues }, { status: 400 });
         }
+        if (error.message === "Forbidden") return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+        if (error.message === "Only owner can change visibility") return NextResponse.json({ error: error.message }, { status: 403 });
+
+        console.error(error);
         return NextResponse.json({ error: "Internal Error" }, { status: 500 });
     }
 }
@@ -322,75 +151,16 @@ export async function PUT(request: Request, context: Context) {
  */
 export async function DELETE(request: Request, context: Context) {
     const { id: albumId } = await context.params;
-    const userId = await getUserId();
+    const userId = await getAuthenticatedUser();
 
     if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-    const hasAccess = await checkAlbumPermission(userId, albumId, "owner");
-    if (!hasAccess) {
-        return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-    }
-
     try {
-        // 1. Fetch all images in album to get S3 keys
-        const albumImages = await db.select({
-            s3Key: images.s3Key,
-            s3KeyOriginal: images.s3KeyOriginal,
-            s3KeyDisplay: images.s3KeyDisplay,
-            s3KeyThumb: images.s3KeyThumb,
-        }).from(images).where(eq(images.albumId, albumId));
-
-        // 2. Collect unique keys
-        const keysToDelete = new Set<string>();
-        for (const img of albumImages) {
-            if (img.s3Key) keysToDelete.add(img.s3Key);
-            if (img.s3KeyOriginal) keysToDelete.add(img.s3KeyOriginal);
-            if (img.s3KeyDisplay) keysToDelete.add(img.s3KeyDisplay);
-            if (img.s3KeyThumb) keysToDelete.add(img.s3KeyThumb);
-        }
-
-        // 3. Delete from S3
-        if (keysToDelete.size > 0) {
-            const { deleteS3Objects } = await import("@/lib/s3");
-            await deleteS3Objects(Array.from(keysToDelete));
-        }
-
-        // 4. Delete from DB (Cascade will handle images/members)
-        await db.delete(albums).where(eq(albums.id, albumId));
-
-        // LOGGING: Album Delete
-        // Note: Album is deleted, but we can still log to activityLogs if we don't cascade delete logs immediately
-        // However, if logs cascade delete with album, this log will be lost immediately.
-        // Let's check schema. activityLogs.albumId references albums.id { onDelete: "cascade" }.
-        // So this log is pointless unless we remove the cascade or keep it for analytics (if we had a separate analytics db).
-        // BUT, for "Activity Log" viewed *inside* the album, it doesn't matter because the album is gone.
-        // The user can't see the log anyway.
-        // So I will skip logging 'album_delete' locally for now effectively, OR I could log it before delete
-        // effectively making it the last thing seen? No, access is lost.
-        // Wait, if I delete the album, I can't view its logs.
-        // So logging 'album_delete' is only useful if we have a global activity log or soft delete.
-        // The schema has `deletedAt`, but this code does `db.delete`.
-        // If it's hard delete, logging is moot for the User.
-        // I'll add the log call properly *before* delete just in case we switch to soft delete later or for admin auditing if the DB preserves it.
-        // Actually, schema.ts line 109: `onDelete: "cascade"`.
-        // So the log entry limits its own lifespan to 0ms.
-        // I will skipping adding it to avoid confusion/unnecessary DB writes.
-        // Correction: User might wonder "Why is my album gone?" -> they can't check logs.
-        // Re-reading task: "Add logging to key album actions (upload, delete...)"
-        // I'll add it anyway, maybe for a future "Trash" feature or if we change cascade.
-        // To make it persist slightly, we'd need to change schema, but I won't do that now.
-        // Actually, let's just log it before delete.
-
-        const { logActivity } = await import("@/lib/activity");
-        await logActivity({
-            userId,
-            albumId,
-            action: "album_delete",
-        });
-
+        await AlbumService.deleteAlbum(userId, albumId);
         return NextResponse.json({ success: true });
-    } catch (error) {
-        console.error("Delete album error:", error);
-        return NextResponse.json({ error: "Failed to delete album" }, { status: 500 });
+    } catch (error: any) {
+        if (error.message === "Forbidden") return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+        console.error(error);
+        return NextResponse.json({ error: "Internal Error" }, { status: 500 });
     }
 }

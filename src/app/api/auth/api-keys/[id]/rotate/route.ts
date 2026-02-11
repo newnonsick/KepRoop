@@ -3,45 +3,26 @@ import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { verifyAccessToken } from "@/lib/auth/tokens";
 import { rotateApiKey } from "@/lib/auth/api-keys";
+import { getAuthenticatedUser } from "@/lib/auth/session";
 
 /**
  * @swagger
- * /api/auth/api-keys/{id}/rotate:
- *   post:
- *     tags:
- *       - Auth
- *     summary: Rotate API key
- *     description: Rotate an API key (revoke old, create new)
- *     parameters:
- *       - in: path
- *         name: id
- *         required: true
- *         schema:
- *           type: string
- *     responses:
- *       200:
- *         description: The new API key
+// ...
  */
 export async function POST(
     request: Request,
     { params }: { params: Promise<{ id: string }> }
 ) {
-    const cookieStore = await cookies();
-    const token = cookieStore.get("accessToken")?.value;
+    const userId = await getAuthenticatedUser();
 
-    if (!token) {
-        return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
-    const payload = await verifyAccessToken(token);
-    if (!payload?.userId) {
+    if (!userId) {
         return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
     const { id } = await params;
 
     try {
-        const { key, record } = await rotateApiKey(id, payload.userId);
+        const { key, record } = await rotateApiKey(id, userId);
         return NextResponse.json({ key, record });
     } catch (error) {
         return NextResponse.json({ error: "Failed to rotate key" }, { status: 400 });

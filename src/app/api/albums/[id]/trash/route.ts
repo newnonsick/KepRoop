@@ -8,12 +8,10 @@ import { images, users } from "@/db/schema";
 import { eq, isNotNull, and, desc, inArray } from "drizzle-orm";
 import { deleteS3Object, generateDownloadUrl } from "@/lib/s3";
 
+import { getAuthenticatedUser } from "@/lib/auth/session";
+
 async function getUserId() {
-    const cookieStore = await cookies();
-    const token = cookieStore.get("accessToken")?.value;
-    if (!token) return null;
-    const payload = await verifyAccessToken(token);
-    return payload?.userId;
+    return getAuthenticatedUser();
 }
 
 type Context = { params: Promise<{ id: string }> };

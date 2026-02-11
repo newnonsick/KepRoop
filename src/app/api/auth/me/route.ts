@@ -28,29 +28,47 @@ import { eq } from "drizzle-orm";
  *       401:
  *         description: Not authenticated
  */
+import { getAuthenticatedUser } from "@/lib/auth/session";
+
+/**
+ * @swagger
+// ... (keep comments)
+ */
 export async function GET() {
-    const cookieStore = await cookies();
-    const accessToken = cookieStore.get("accessToken")?.value;
-    const refreshToken = cookieStore.get("refreshToken")?.value;
+    // 0. Check for valid session (Cookie or API Key)
+    // This handles both "Authorization: Bearer/Api-Key" and "Cookie: accessToken"
+    const authenticatedUserId = await getAuthenticatedUser();
 
-    let userId: string | null = null;
-    let shouldRefresh = false;
+    if (authenticatedUserId) {
+        const user = await db.query.users.findFirst({
+            where: eq(users.id, authenticatedUserId),
+            columns: {
+                id: true,
+                email: true,
+                name: true,
+                avatarUrl: true,
+                passwordHash: true,
+            }
+        });
 
-    // 1. Try Access Token first
-    if (accessToken) {
-        const payload = await verifyAccessToken(accessToken);
-        if (payload) {
-            userId = payload.userId;
-        } else {
-            // Access Token invalid/expired, try refresh
-            shouldRefresh = true;
+        if (user) {
+            const { passwordHash, ...userWithoutPassword } = user;
+            return NextResponse.json({
+                user: {
+                    ...userWithoutPassword,
+                    hasPassword: !!passwordHash
+                }
+            });
         }
-    } else {
-        shouldRefresh = true;
     }
 
-    // 2. Refresh Logic if needed
-    if (shouldRefresh && refreshToken) {
+    // 1. Fallback: Explicit Refresh Token Flow (Cookie only)
+    // If getAuthenticatedUser() returned null, it means Access Token is missing or invalid.
+    // We try to use the Refresh Token to get a new session.
+    const cookieStore = await cookies();
+    const refreshToken = cookieStore.get("refreshToken")?.value;
+
+    if (refreshToken) {
         try {
             // Verify structure
             const payload = await verifyRefreshToken(refreshToken);
@@ -105,7 +123,27 @@ export async function GET() {
                             path: "/",
                         });
 
-                        userId = payload.userId;
+                        // Return the user
+                        const user = await db.query.users.findFirst({
+                            where: eq(users.id, payload.userId),
+                            columns: {
+                                id: true,
+                                email: true,
+                                name: true,
+                                avatarUrl: true,
+                                passwordHash: true,
+                            }
+                        });
+
+                        if (user) {
+                            const { passwordHash, ...userWithoutPassword } = user;
+                            return NextResponse.json({
+                                user: {
+                                    ...userWithoutPassword,
+                                    hasPassword: !!passwordHash
+                                }
+                            });
+                        }
                     }
                 }
             }
@@ -114,31 +152,5 @@ export async function GET() {
         }
     }
 
-    if (!userId) {
-        return NextResponse.json({ user: null }, { status: 401 });
-    }
-
-    const user = await db.query.users.findFirst({
-        where: eq(users.id, userId),
-        columns: {
-            id: true,
-            email: true,
-            name: true,
-            avatarUrl: true,
-            passwordHash: true,
-        }
-    });
-
-    if (!user) {
-        return NextResponse.json({ user: null }, { status: 401 });
-    }
-
-    const { passwordHash, ...userWithoutPassword } = user;
-
-    return NextResponse.json({
-        user: {
-            ...userWithoutPassword,
-            hasPassword: !!passwordHash
-        }
-    });
+    return NextResponse.json({ user: null }, { status: 401 });
 }
