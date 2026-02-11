@@ -3,8 +3,9 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev",
-    "build": "next build",
+    "dev": "npm run build:swagger && next dev",
+    "build": "npm run build:swagger && next build",
+    "build:swagger": "npx tsx scripts/build-swagger.ts",
     "start": "next start",
     "lint": "eslint"
   },
