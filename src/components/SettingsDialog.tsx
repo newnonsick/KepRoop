@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import {
     Dialog,
     DialogContent,
+    DialogTitle,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -76,8 +77,8 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
 
         setLoading(true);
         try {
-            const res = await fetch("/api/user/profile", {
-                method: "PUT",
+            const res = await fetch("/api/user/password", {
+                method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
                     currentPassword: user?.hasPassword ? currentPassword : undefined,
@@ -108,6 +109,7 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
             <DialogContent className="w-[calc(100%-2rem)] max-w-[400px] sm:max-w-[600px] max-h-[85vh] p-0 overflow-hidden bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-xl [&>button]:hidden">
+                <DialogTitle className="sr-only">Settings</DialogTitle>
                 {/* Mobile Layout */}
                 <div className="flex flex-col h-full md:hidden">
                     {/* Mobile Header */}

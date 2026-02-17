@@ -73,7 +73,7 @@ export function EditAlbumDialog({ album, trigger, open: controlledOpen, onOpenCh
 
         try {
             const res = await fetch(`/api/albums/${album.id}`, {
-                method: "PUT",
+                method: "PATCH",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
                     title: title.trim(),

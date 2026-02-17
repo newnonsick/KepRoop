@@ -28,7 +28,7 @@ export function EditFolderDialog({ albumId, folder, open, onOpenChange, onFolder
         setLoading(true);
         try {
             const res = await fetch(`/api/albums/${albumId}/folders/${folder.id}`, {
-                method: "PUT",
+                method: "PATCH",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ name: name.trim() }),
             });

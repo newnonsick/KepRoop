@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { getAuthenticatedUser } from "@/lib/auth/session";
+import { getAuthContext } from "@/lib/auth/session";
+import { checkRateLimits, logApiKeyUsage } from "@/lib/api-middleware";
 import { ImageService } from "@/lib/services/image.service";
 
 const confirmSchema = z.object({
@@ -43,8 +44,15 @@ const confirmSchema = z.object({
  *         description: Image confirmed
  */
 export async function POST(request: Request) {
-    const userId = await getAuthenticatedUser();
+    const { userId, apiKey } = await getAuthContext();
     if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+    if (apiKey) {
+        const limitCheck = await checkRateLimits(apiKey.id, apiKey.rateLimit, apiKey.rateLimitPerDay, request);
+        if (!limitCheck.ok) {
+            return NextResponse.json(limitCheck.error, { status: limitCheck.status });
+        }
+    }
 
     try {
         const body = await request.json();
@@ -52,16 +60,30 @@ export async function POST(request: Request) {
 
         const image = await ImageService.confirmUpload(userId, data);
 
+        if (apiKey) {
+            await logApiKeyUsage(apiKey.id, request, 200);
+        }
+
         return NextResponse.json({ image });
 
     } catch (error) {
+        let status = 500;
+        let errorBody: any = { error: "Internal Error" };
+
         if (error instanceof z.ZodError) {
-            return NextResponse.json({ error: error.issues }, { status: 400 });
+            status = 400;
+            errorBody = { error: error.issues };
+        } else if (error instanceof Error && error.message === "Forbidden") {
+            status = 403;
+            errorBody = { error: "Forbidden" };
+        } else {
+            console.error(error);
         }
-        if (error instanceof Error && error.message === "Forbidden") {
-            return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+
+        if (apiKey) {
+            await logApiKeyUsage(apiKey.id, request, status);
         }
-        console.error(error);
-        return NextResponse.json({ error: "Internal Error" }, { status: 500 });
+
+        return NextResponse.json(errorBody, { status });
     }
 }

@@ -1,16 +1,10 @@
 
 import { NextResponse } from "next/server";
-import { cookies } from "next/headers";
-import { verifyAccessToken } from "@/lib/auth/tokens";
 import { checkAlbumPermission } from "@/lib/auth/rbac";
 import { logActivity } from "@/lib/activity";
 import { db } from "@/db";
 import { images } from "@/db/schema";
 import { getAuthenticatedUser } from "@/lib/auth/session";
-
-async function getUserId() {
-    return getAuthenticatedUser();
-}
 
 /**
  * @swagger
@@ -49,7 +43,7 @@ async function getUserId() {
  *         description: Image registered
  */
 export async function POST(request: Request) {
-    const userId = await getUserId();
+    const userId = await getAuthenticatedUser();
     if (!userId) {
         return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
@@ -129,7 +123,7 @@ export async function POST(request: Request) {
                 height: image.height,
                 dateTaken: image.dateTaken,
             }
-        });
+        }, { status: 201 });
 
     } catch (error) {
         console.error("Image registration error:", error);

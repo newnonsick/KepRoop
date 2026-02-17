@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { getAuthenticatedUser } from "@/lib/auth/session";
+import { getAuthContext } from "@/lib/auth/session";
+import { checkRateLimits, logApiKeyUsage } from "@/lib/api-middleware";
 import { InviteService } from "@/lib/services/invite.service";
 
 const acceptSchema = z.object({
@@ -31,7 +32,14 @@ const acceptSchema = z.object({
  *         description: Invite accepted
  */
 export async function POST(request: Request) {
-    const userId = await getAuthenticatedUser();
+    const { userId, apiKey } = await getAuthContext();
+
+    if (apiKey) {
+        const limitCheck = await checkRateLimits(apiKey.id, apiKey.rateLimit, apiKey.rateLimitPerDay, request);
+        if (!limitCheck.ok) {
+            return NextResponse.json(limitCheck.error, { status: limitCheck.status });
+        }
+    }
 
     try {
         const body = await request.json();
@@ -55,29 +63,46 @@ export async function POST(request: Request) {
                 maxAge: 60 * 60 * 24 * 30 // 30 days
             });
 
+            if (apiKey) {
+                await logApiKeyUsage(apiKey.id, request, 200);
+            }
+
             return response;
+        }
+
+        if (apiKey) {
+            await logApiKeyUsage(apiKey.id, request, 200);
         }
 
         return NextResponse.json({ success: true, ...result });
 
     } catch (error: any) {
+        let status = 500;
+        let errorBody: any = { error: "Internal Error" };
+
         if (error instanceof z.ZodError) {
-            return NextResponse.json({ error: error.issues }, { status: 400 });
-        }
-        if (error.message === "Invalid code format" || error.message === "Invalid token") {
-            return NextResponse.json({ error: error.message }, { status: 400 });
-        }
-        if (error.message === "Invite not found") {
-            return NextResponse.json({ error: "Invite not found" }, { status: 404 });
-        }
-        if (error.message === "Invite expired" || error.message === "Invite limit reached") {
-            return NextResponse.json({ error: error.message }, { status: 410 });
-        }
-        if (error.message === "Sign in required") {
-            return NextResponse.json({ error: "Sign in required to accept this invite" }, { status: 401 });
+            status = 400;
+            errorBody = { error: error.issues };
+        } else if (error.message === "Invalid code format" || error.message === "Invalid token") {
+            status = 400;
+            errorBody = { error: error.message };
+        } else if (error.message === "Invite not found") {
+            status = 404;
+            errorBody = { error: "Invite not found" };
+        } else if (error.message === "Invite expired" || error.message === "Invite limit reached") {
+            status = 410;
+            errorBody = { error: error.message };
+        } else if (error.message === "Sign in required") {
+            status = 401;
+            errorBody = { error: "Sign in required to accept this invite" };
+        } else {
+            console.error(error);
         }
 
-        console.error(error);
-        return NextResponse.json({ error: "Internal Error" }, { status: 500 });
+        if (apiKey) {
+            await logApiKeyUsage(apiKey.id, request, status);
+        }
+
+        return NextResponse.json(errorBody, { status });
     }
 }

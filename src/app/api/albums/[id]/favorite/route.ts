@@ -1,18 +1,9 @@
 
 import { NextResponse } from "next/server";
-import { cookies } from "next/headers";
-import { verifyAccessToken } from "@/lib/auth/tokens";
 import { db } from "@/db";
-import { favoriteAlbums, activityLogs } from "@/db/schema"; // Import favoriteAlbums
+import { favoriteAlbums, activityLogs } from "@/db/schema";
 import { and, eq } from "drizzle-orm";
-
-// Helper to get user ID
 import { getAuthenticatedUser } from "@/lib/auth/session";
-
-// Helper to get user ID
-async function getUserId() {
-    return getAuthenticatedUser();
-}
 
 /**
  * @swagger
@@ -36,7 +27,7 @@ export async function POST(
     request: Request,
     { params }: { params: Promise<{ id: string }> } // Params are now a Promise in Next.js 15
 ) {
-    const userId = await getUserId();
+    const userId = await getAuthenticatedUser();
     if (!userId) {
         return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }

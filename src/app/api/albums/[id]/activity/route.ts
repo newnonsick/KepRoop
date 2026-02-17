@@ -1,16 +1,9 @@
 import { NextResponse } from "next/server";
-import { cookies } from "next/headers";
-import { verifyAccessToken } from "@/lib/auth/tokens";
 import { db } from "@/db";
 import { activityLogs, users } from "@/db/schema";
 import { checkAlbumPermission } from "@/lib/auth/rbac";
 import { eq, desc } from "drizzle-orm";
-
 import { getAuthenticatedUser } from "@/lib/auth/session";
-
-async function getUserId() {
-    return getAuthenticatedUser();
-}
 
 type Context = { params: Promise<{ id: string }> };
 
@@ -42,7 +35,7 @@ type Context = { params: Promise<{ id: string }> };
  */
 export async function GET(request: Request, context: Context) {
     const { id: albumId } = await context.params;
-    const userId = await getUserId();
+    const userId = await getAuthenticatedUser();
 
     if (!userId) {
         return NextResponse.json({ error: "Unauthorized" }, { status: 401 });

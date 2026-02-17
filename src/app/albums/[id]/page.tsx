@@ -467,7 +467,7 @@ export default function AlbumDetailPage({ params }: { params: Promise<{ id: stri
     async function handleSetCover(imageId: string | null) {
         try {
             const res = await fetch(`/api/albums/${albumId}`, {
-                method: "PUT",
+                method: "PATCH",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ coverImageId: imageId }),
             });
@@ -528,39 +528,64 @@ export default function AlbumDetailPage({ params }: { params: Promise<{ id: stri
 
         setUploading(true);
         try {
-            // 1. Get upload URL for this specific album
-            const resUrl = await fetch("/api/images/upload-url", {
+            // 1. Resize images (client-side) — same as regular upload
+            const { resizeImage } = await import("@/lib/client-image");
+            const [originalVariant, displayVariant, thumbVariant] = await Promise.all([
+                resizeImage(file, 0, 0.95, file.type),
+                resizeImage(file, 2000, 0.90),
+                resizeImage(file, 400, 0.70)
+            ]);
+
+            // 2. Get presigned URLs
+            const urlRes = await fetch("/api/images/upload-url", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ albumId, contentType: file.type, filename: file.name }),
+                body: JSON.stringify({
+                    filename: file.name,
+                    contentType: originalVariant.blob.type,
+                    albumId,
+                }),
             });
-            const { url, key } = await resUrl.json();
+            if (!urlRes.ok) throw new Error("Failed to get upload URL");
+            const { urls, keys } = await urlRes.json();
 
-            if (!url) throw new Error("Failed to get upload URL");
+            // 3. Upload all 3 variants to S3
+            await Promise.all([
+                fetch(urls.original, {
+                    method: "PUT",
+                    headers: { "Content-Type": originalVariant.blob.type },
+                    body: originalVariant.blob,
+                }),
+                fetch(urls.display, {
+                    method: "PUT",
+                    headers: { "Content-Type": "image/webp" },
+                    body: displayVariant.blob,
+                }),
+                fetch(urls.thumb, {
+                    method: "PUT",
+                    headers: { "Content-Type": "image/webp" },
+                    body: thumbVariant.blob,
+                }),
+            ]);
 
-            // 2. Upload to S3
-            await fetch(url, {
-                method: "PUT",
-                headers: { "Content-Type": file.type },
-                body: file,
-            });
-
-            // 3. Register image in DB
-            const resImg = await fetch("/api/images", {
+            // 4. Register image in DB
+            const regRes = await fetch("/api/images/register", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
                     albumId,
-                    s3Key: key,
-                    mimeType: file.type,
-                    size: file.size,
-                    width: 0, // Simplified for cover upload
-                    height: 0,
+                    keys,
+                    mimeType: originalVariant.blob.type,
+                    size: originalVariant.blob.size,
+                    filename: file.name,
+                    width: originalVariant.width,
+                    height: originalVariant.height,
                 }),
             });
-            const { image: newImage } = await resImg.json();
+            if (!regRes.ok) throw new Error("Failed to register image");
+            const { image: newImage } = await regRes.json();
 
-            // 4. Set as cover
+            // 5. Set as cover
             if (newImage?.id) {
                 await handleSetCover(newImage.id);
             }

@@ -1,16 +1,10 @@
 import { NextResponse } from "next/server";
-import { cookies } from "next/headers";
-import { verifyAccessToken } from "@/lib/auth/tokens";
 import { db } from "@/db";
 import { albumMembers, albums } from "@/db/schema";
 import { checkAlbumPermission, getAlbumRole } from "@/lib/auth/rbac";
 import { eq, and } from "drizzle-orm";
 import { z } from "zod";
 import { getAuthenticatedUser } from "@/lib/auth/session";
-
-async function getUserId() {
-    return getAuthenticatedUser();
-}
 
 // Update schema to include 'owner'
 const updateMemberSchema = z.object({
@@ -74,7 +68,7 @@ type Context = { params: Promise<{ id: string; memberId: string }> };
  */
 export async function PATCH(request: Request, context: Context) {
     const { id: albumId, memberId } = await context.params;
-    const userId = await getUserId();
+    const userId = await getAuthenticatedUser();
 
     if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
@@ -138,7 +132,7 @@ export async function PATCH(request: Request, context: Context) {
 
 export async function DELETE(request: Request, context: Context) {
     const { id: albumId, memberId } = await context.params;
-    const userId = await getUserId();
+    const userId = await getAuthenticatedUser();
 
     if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 

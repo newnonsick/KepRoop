@@ -65,7 +65,7 @@ export async function GET(request: Request, context: Context) {
 /**
  * @swagger
  * /api/albums/{id}:
- *   put:
+ *   patch:
  *     tags:
  *       - Albums
  *     summary: Update album
@@ -97,7 +97,7 @@ export async function GET(request: Request, context: Context) {
  *       200:
  *         description: Album updated
  */
-export async function PUT(request: Request, context: Context) {
+export async function PATCH(request: Request, context: Context) {
     const { id: albumId } = await context.params;
     const userId = await getAuthenticatedUser();
 

@@ -230,7 +230,8 @@ export const apiKeys = pgTable("api_keys", {
     keyHash: text("key_hash").notNull(), // Hashed API key
     name: text("name").notNull(), // User-friendly name
     prefix: text("prefix").notNull(), // First few chars for identification
-    rateLimit: integer("rate_limit").default(1000).notNull(), // Requests per minute
+    rateLimit: integer("rate_limit").default(60).notNull(), // Max requests per minute
+    rateLimitPerDay: integer("rate_limit_per_day").default(2000).notNull(), // Max requests per day
     lastUsedAt: timestamp("last_used_at"),
     createdAt: timestamp("created_at").defaultNow().notNull(),
     revokedAt: timestamp("revoked_at"), // Null = active, Non-null = revoked

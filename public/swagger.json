@@ -560,7 +560,7 @@
           }
         }
       },
-      "put": {
+      "patch": {
         "tags": [
           "Albums"
         ],
@@ -843,10 +843,10 @@
           "Auth"
         ],
         "summary": "List API keys",
-        "description": "List all API keys for the authenticated user.",
+        "description": "List all API keys for the authenticated user, including usage stats.",
         "responses": {
           "200": {
-            "description": "List of API keys"
+            "description": "List of API keys with usage data"
           },
           "401": {
             "description": "Unauthorized"
@@ -1104,6 +1104,30 @@
         }
       }
     },
+    "/api/images/{id}/restore": {
+      "post": {
+        "tags": [
+          "Images"
+        ],
+        "summary": "Restore image",
+        "description": "Restore a soft-deleted image from trash.",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Image restored"
+          }
+        }
+      }
+    },
     "/api/images/{id}": {
       "get": {
         "tags": [
@@ -1149,48 +1173,6 @@
         "responses": {
           "200": {
             "description": "Image deleted"
-          }
-        }
-      },
-      "patch": {
-        "tags": [
-          "Images"
-        ],
-        "summary": "Restore image",
-        "description": "Restore a soft-deleted image.",
-        "parameters": [
-          {
-            "in": "path",
-            "name": "id",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "required": [
-                  "action"
-                ],
-                "properties": {
-                  "action": {
-                    "type": "string",
-                    "enum": [
-                      "restore"
-                    ]
-                  }
-                }
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "Image restored"
           }
         }
       }
@@ -1447,6 +1429,41 @@
         }
       }
     },
+    "/api/user/password": {
+      "post": {
+        "tags": [
+          "User"
+        ],
+        "summary": "Change password",
+        "description": "Change the current user's password.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "newPassword"
+                ],
+                "properties": {
+                  "currentPassword": {
+                    "type": "string"
+                  },
+                  "newPassword": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Password updated"
+          }
+        }
+      }
+    },
     "/api/user/profile": {
       "patch": {
         "tags": [
@@ -1475,39 +1492,6 @@
         "responses": {
           "200": {
             "description": "Profile updated"
-          }
-        }
-      },
-      "put": {
-        "tags": [
-          "User"
-        ],
-        "summary": "Update password",
-        "description": "Change user password.",
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "required": [
-                  "newPassword"
-                ],
-                "properties": {
-                  "currentPassword": {
-                    "type": "string"
-                  },
-                  "newPassword": {
-                    "type": "string"
-                  }
-                }
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "Password updated"
           }
         }
       }

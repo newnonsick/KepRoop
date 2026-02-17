@@ -73,7 +73,7 @@ export async function POST(request: Request) {
                 height: image.height,
                 dateTaken: image.dateTaken,
             }
-        });
+        }, { status: 201 });
 
     } catch (error) {
         console.error("Upload error:", error);

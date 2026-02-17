@@ -1,24 +1,31 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Dialog, DialogContent } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
-import { Loader2, X, Plus, Trash2, RefreshCw, Copy, Check, Shield, AlertTriangle, KeyRound } from "lucide-react";
+import { Loader2, X, Plus, Trash2, RefreshCw, Copy, Check, Shield, AlertTriangle, KeyRound, Gauge, Hash, ShieldAlert, Activity } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
+
+interface ApiKeyUsage {
+    minuteUsage: number;
+    dailyUsage: number;
+}
 
 interface ApiKey {
     id: string;
     name: string;
     prefix: string;
     rateLimit: number;
+    rateLimitPerDay: number;
     lastUsedAt: string | null;
     createdAt: string;
     revokedAt: string | null;
+    usage: ApiKeyUsage;
 }
 
 interface ApiKeyDialogProps {
@@ -149,7 +156,7 @@ export function ApiKeyDialog({ open, onOpenChange }: ApiKeyDialogProps) {
                                 <Shield className="h-5 w-5 text-blue-500" />
                             </div>
                             <div>
-                                <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100">API Keys</h2>
+                                <DialogTitle className="text-lg font-semibold text-slate-900 dark:text-slate-100">API Keys</DialogTitle>
                                 <p className="text-sm text-slate-500 dark:text-slate-400">
                                     Manage access tokens for your applications.
                                     <a href="/api-doc" target="_blank" className="text-blue-500 hover:text-blue-600 ml-1 inline-flex items-center hover:underline">
@@ -210,16 +217,17 @@ export function ApiKeyDialog({ open, onOpenChange }: ApiKeyDialogProps) {
                                 <Input
                                     value={newKeyName}
                                     onChange={(e) => setNewKeyName(e.target.value)}
-                                    placeholder="Enter a name (e.g., 'Mobile App')"
+                                    placeholder={keys.length >= 3 ? "Key limit reached (3/3)" : "Enter a name (e.g., 'Mobile App')"}
+                                    disabled={keys.length >= 3}
                                     className="h-11 flex-1 rounded-xl bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 focus:bg-white dark:focus:bg-slate-900 focus:border-blue-500 focus:ring-blue-500/20 transition-all text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500"
                                 />
                                 <Button
                                     type="submit"
-                                    disabled={generating || !newKeyName.trim() || !!createdKey}
-                                    className="h-11 px-6 rounded-xl bg-blue-500 hover:bg-blue-600 text-white shadow-lg shadow-blue-500/20 font-medium"
+                                    disabled={generating || !newKeyName.trim() || !!createdKey || keys.length >= 3}
+                                    className="h-11 px-6 rounded-xl bg-blue-500 hover:bg-blue-600 text-white shadow-lg shadow-blue-500/20 font-medium disabled:shadow-none"
                                 >
                                     {generating ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4 mr-2" />}
-                                    Generate Key
+                                    {keys.length >= 3 ? "Limit Reached" : "Generate Key"}
                                 </Button>
                             </form>
                         </div>
@@ -236,49 +244,103 @@ export function ApiKeyDialog({ open, onOpenChange }: ApiKeyDialogProps) {
                                     <p className="text-slate-500 dark:text-slate-400">No API keys found.</p>
                                 </div>
                             ) : (
-                                keys.map((key) => (
-                                    <div key={key.id} className="group flex items-center justify-between p-4 bg-white dark:bg-slate-800 border border-slate-100 dark:border-slate-700 rounded-xl hover:shadow-md transition-all">
-                                        <div className="flex items-start gap-4">
-                                            <div className="h-10 w-10 rounded-lg bg-slate-100 dark:bg-slate-700 flex items-center justify-center text-slate-500">
-                                                <KeyRound className="h-5 w-5" />
-                                            </div>
-                                            <div>
-                                                <div className="flex items-center gap-2">
-                                                    <h4 className="font-medium text-slate-900 dark:text-slate-100">{key.name}</h4>
-                                                    <span className="px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-700 text-xs font-mono text-slate-500">
-                                                        {key.prefix}...
-                                                    </span>
+                                keys.map((key) => {
+                                    const minuteUsage = key.usage?.minuteUsage ?? 0;
+                                    const dailyUsage = key.usage?.dailyUsage ?? 0;
+                                    const minutePct = Math.min((minuteUsage / key.rateLimit) * 100, 100);
+                                    const dailyPct = Math.min((dailyUsage / key.rateLimitPerDay) * 100, 100);
+                                    const getBarColor = (pct: number) =>
+                                        pct >= 90 ? 'bg-red-500' : pct >= 70 ? 'bg-amber-500' : 'bg-blue-500';
+
+                                    return (
+                                        <div key={key.id} className="group p-4 bg-white dark:bg-slate-800 border border-slate-100 dark:border-slate-700 rounded-xl hover:shadow-md transition-all">
+                                            <div className="flex items-center justify-between">
+                                                <div className="flex items-start gap-4">
+                                                    <div className="h-10 w-10 rounded-lg bg-slate-100 dark:bg-slate-700 flex items-center justify-center text-slate-500">
+                                                        <KeyRound className="h-5 w-5" />
+                                                    </div>
+                                                    <div>
+                                                        <div className="flex items-center gap-2">
+                                                            <h4 className="font-medium text-slate-900 dark:text-slate-100">{key.name}</h4>
+                                                            <span className="px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-700 text-xs font-mono text-slate-500">
+                                                                {key.prefix}...
+                                                            </span>
+                                                        </div>
+                                                        <div className="flex items-center gap-3 mt-1 text-xs text-slate-500 dark:text-slate-400">
+                                                            <span>Created {format(new Date(key.createdAt), "MMM d, yyyy")}</span>
+                                                            <span>•</span>
+                                                            <span>Last used {key.lastUsedAt ? format(new Date(key.lastUsedAt), "MMM d, HH:mm") : "Never"}</span>
+                                                        </div>
+                                                    </div>
                                                 </div>
-                                                <div className="flex items-center gap-3 mt-1 text-xs text-slate-500 dark:text-slate-400">
-                                                    <span>Created {format(new Date(key.createdAt), "MMM d, yyyy")}</span>
-                                                    <span>•</span>
-                                                    <span>Last used {key.lastUsedAt ? format(new Date(key.lastUsedAt), "MMM d, HH:mm") : "Never"}</span>
+                                                <div className="flex items-center gap-2 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
+                                                    <Button
+                                                        variant="ghost"
+                                                        size="sm"
+                                                        onClick={() => { setActionKey(key); setConfirmRotateOpen(true); }}
+                                                        className="h-9 w-9 p-0 rounded-lg text-slate-400 hover:text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/20"
+                                                        title="Rotate Key"
+                                                    >
+                                                        <RefreshCw className="h-4 w-4" />
+                                                    </Button>
+                                                    <Button
+                                                        variant="ghost"
+                                                        size="sm"
+                                                        onClick={() => { setActionKey(key); setConfirmRevokeOpen(true); }}
+                                                        className="h-9 w-9 p-0 rounded-lg text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20"
+                                                        title="Revoke Key"
+                                                    >
+                                                        <Trash2 className="h-4 w-4" />
+                                                    </Button>
+                                                </div>
+                                            </div>
+
+                                            {/* Usage Stats */}
+                                            <div className="mt-3 pt-3 border-t border-slate-50 dark:border-slate-700/50 grid grid-cols-2 gap-4">
+                                                <div className="space-y-1">
+                                                    <div className="flex items-center justify-between text-xs">
+                                                        <span className="text-slate-400 dark:text-slate-500">Per min</span>
+                                                        <span className="font-medium text-slate-600 dark:text-slate-300">{minuteUsage} / {key.rateLimit}</span>
+                                                    </div>
+                                                    <div className="h-1.5 rounded-full bg-slate-100 dark:bg-slate-700 overflow-hidden">
+                                                        <div className={cn("h-full rounded-full transition-all", getBarColor(minutePct))} style={{ width: `${minutePct}%` }} />
+                                                    </div>
+                                                </div>
+                                                <div className="space-y-1">
+                                                    <div className="flex items-center justify-between text-xs">
+                                                        <span className="text-slate-400 dark:text-slate-500">Today</span>
+                                                        <span className="font-medium text-slate-600 dark:text-slate-300">{dailyUsage.toLocaleString()} / {key.rateLimitPerDay.toLocaleString()}</span>
+                                                    </div>
+                                                    <div className="h-1.5 rounded-full bg-slate-100 dark:bg-slate-700 overflow-hidden">
+                                                        <div className={cn("h-full rounded-full transition-all", getBarColor(dailyPct))} style={{ width: `${dailyPct}%` }} />
+                                                    </div>
                                                 </div>
                                             </div>
                                         </div>
-                                        <div className="flex items-center gap-2 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
-                                            <Button
-                                                variant="ghost"
-                                                size="sm"
-                                                onClick={() => { setActionKey(key); setConfirmRotateOpen(true); }}
-                                                className="h-9 w-9 p-0 rounded-lg text-slate-400 hover:text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/20"
-                                                title="Rotate Key"
-                                            >
-                                                <RefreshCw className="h-4 w-4" />
-                                            </Button>
-                                            <Button
-                                                variant="ghost"
-                                                size="sm"
-                                                onClick={() => { setActionKey(key); setConfirmRevokeOpen(true); }}
-                                                className="h-9 w-9 p-0 rounded-lg text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20"
-                                                title="Revoke Key"
-                                            >
-                                                <Trash2 className="h-4 w-4" />
-                                            </Button>
-                                        </div>
-                                    </div>
-                                ))
+                                    );
+                                })
                             )}
+                        </div>
+
+                        {/* API Key Policy */}
+                        <div className="mt-8 pt-6 border-t border-slate-100 dark:border-slate-800">
+                            <h3 className="text-xs font-medium text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-3">Usage Policy</h3>
+                            <div className="rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-700/50 divide-y divide-slate-100 dark:divide-slate-700/50">
+                                <div className="flex items-center justify-between px-4 py-3">
+                                    <div className="flex items-center gap-2.5">
+                                        <Gauge className="h-4 w-4 text-slate-400 dark:text-slate-500" />
+                                        <span className="text-sm text-slate-600 dark:text-slate-300">Rate limit</span>
+                                    </div>
+                                    <span className="text-sm font-medium text-slate-900 dark:text-slate-100">60 / min · 2,000 / day</span>
+                                </div>
+                                <div className="flex items-center justify-between px-4 py-3">
+                                    <div className="flex items-center gap-2.5">
+                                        <Hash className="h-4 w-4 text-slate-400 dark:text-slate-500" />
+                                        <span className="text-sm text-slate-600 dark:text-slate-300">Key quota</span>
+                                    </div>
+                                    <span className="text-sm font-medium text-slate-900 dark:text-slate-100">{keys.length} / 3</span    >
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>

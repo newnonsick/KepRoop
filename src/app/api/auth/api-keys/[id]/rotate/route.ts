@@ -1,7 +1,5 @@
 
 import { NextResponse } from "next/server";
-import { cookies } from "next/headers";
-import { verifyAccessToken } from "@/lib/auth/tokens";
 import { rotateApiKey } from "@/lib/auth/api-keys";
 import { getAuthenticatedUser } from "@/lib/auth/session";
 
@@ -23,7 +21,16 @@ export async function POST(
 
     try {
         const { key, record } = await rotateApiKey(id, userId);
-        return NextResponse.json({ key, record });
+        return NextResponse.json({
+            key,
+            record: {
+                ...record,
+                usage: {
+                    minuteUsage: 0,
+                    dailyUsage: 0
+                }
+            }
+        });
     } catch (error) {
         return NextResponse.json({ error: "Failed to rotate key" }, { status: 400 });
     }

@@ -1,0 +1,2 @@
+DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'api_keys' AND column_name = 'rate_limit' AND column_default = '60') THEN ALTER TABLE "api_keys" ALTER COLUMN "rate_limit" SET DEFAULT 60; END IF; END $$;--> statement-breakpoint
+DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'api_keys' AND column_name = 'rate_limit_per_day') THEN ALTER TABLE "api_keys" ADD COLUMN "rate_limit_per_day" integer DEFAULT 2000 NOT NULL; END IF; END $$;

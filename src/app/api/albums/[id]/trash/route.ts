@@ -1,18 +1,11 @@
 
 import { NextResponse } from "next/server";
-import { cookies } from "next/headers";
-import { verifyAccessToken } from "@/lib/auth/tokens";
 import { checkAlbumPermission, getAlbumRole } from "@/lib/auth/rbac";
 import { db } from "@/db";
 import { images, users } from "@/db/schema";
 import { eq, isNotNull, and, desc, inArray } from "drizzle-orm";
 import { deleteS3Object, generateDownloadUrl } from "@/lib/s3";
-
 import { getAuthenticatedUser } from "@/lib/auth/session";
-
-async function getUserId() {
-    return getAuthenticatedUser();
-}
 
 type Context = { params: Promise<{ id: string }> };
 
@@ -62,7 +55,7 @@ type Context = { params: Promise<{ id: string }> };
  */
 export async function GET(request: Request, context: Context) {
     const { id: albumId } = await context.params;
-    const userId = await getUserId();
+    const userId = await getAuthenticatedUser();
 
     if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
@@ -97,7 +90,7 @@ export async function GET(request: Request, context: Context) {
 
 export async function DELETE(request: Request, context: Context) {
     const { id: albumId } = await context.params;
-    const userId = await getUserId();
+    const userId = await getAuthenticatedUser();
 
     if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 

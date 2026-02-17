@@ -1,16 +1,10 @@
 
 import { NextResponse } from "next/server";
-import { cookies } from "next/headers";
-import { verifyAccessToken } from "@/lib/auth/tokens";
 import { checkAlbumPermission } from "@/lib/auth/rbac";
 import { generateUploadUrl } from "@/lib/s3";
 import { nanoid } from "nanoid";
-import { getExtensionFromMime } from "@/lib/image-processing"; // Reusing this helper
+import { getExtensionFromMime } from "@/lib/image-processing";
 import { getAuthenticatedUser } from "@/lib/auth/session";
-
-async function getUserId() {
-    return getAuthenticatedUser();
-}
 
 /**
  * @swagger
@@ -42,7 +36,7 @@ async function getUserId() {
  *         description: Presigned URLs generated
  */
 export async function POST(request: Request) {
-    const userId = await getUserId();
+    const userId = await getAuthenticatedUser();
     if (!userId) {
         return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }

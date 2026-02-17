@@ -1,6 +1,4 @@
 import { NextResponse } from "next/server";
-import { cookies } from "next/headers";
-import { verifyAccessToken } from "@/lib/auth/tokens";
 import { checkAlbumPermission } from "@/lib/auth/rbac";
 import { logActivity } from "@/lib/activity";
 import { db } from "@/db";
@@ -61,20 +59,16 @@ import { z } from "zod";
 
 import { getAuthenticatedUser } from "@/lib/auth/session";
 
-async function getUserId() {
-    return getAuthenticatedUser();
-}
-
 const updateFolderSchema = z.object({
     name: z.string().min(1).max(100),
 });
 
 type Context = { params: Promise<{ id: string; folderId: string }> };
 
-// PUT /api/albums/[id]/folders/[folderId] - Rename folder
-export async function PUT(request: Request, context: Context) {
+// PATCH /api/albums/[id]/folders/[folderId] - Rename folder
+export async function PATCH(request: Request, context: Context) {
     const { id: albumId, folderId } = await context.params;
-    const userId = await getUserId();
+    const userId = await getAuthenticatedUser();
 
     if (!userId) {
         return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -124,7 +118,7 @@ export async function PUT(request: Request, context: Context) {
 // DELETE /api/albums/[id]/folders/[folderId] - Delete folder
 export async function DELETE(request: Request, context: Context) {
     const { id: albumId, folderId } = await context.params;
-    const userId = await getUserId();
+    const userId = await getAuthenticatedUser();
 
     if (!userId) {
         return NextResponse.json({ error: "Unauthorized" }, { status: 401 });

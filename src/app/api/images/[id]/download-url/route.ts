@@ -1,16 +1,10 @@
 import { NextResponse } from "next/server";
-import { cookies } from "next/headers";
-import { verifyAccessToken } from "@/lib/auth/tokens";
 import { checkAlbumPermission } from "@/lib/auth/rbac";
 import { generateDownloadUrl } from "@/lib/s3";
 import { db } from "@/db";
 import { images } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import { getAuthenticatedUser } from "@/lib/auth/session";
-
-async function getUserId() {
-    return getAuthenticatedUser();
-}
 
 /**
  * @swagger
@@ -34,7 +28,7 @@ export async function GET(
     request: Request,
     { params }: { params: Promise<{ id: string }> }
 ) {
-    const userId = await getUserId();
+    const userId = await getAuthenticatedUser();
     const resolvedParams = await params;
     const imageId = resolvedParams.id;
 

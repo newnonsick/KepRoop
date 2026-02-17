@@ -83,10 +83,8 @@ export function TrashDialog({ albumId, userRole, onRestore, trigger, open: contr
     const handleRestore = async (imageId: string) => {
         setRestoringId(imageId);
         try {
-            const res = await fetch(`/api/images/${imageId}`, {
-                method: "PATCH",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ action: "restore" }),
+            const res = await fetch(`/api/images/${imageId}/restore`, {
+                method: "POST",
             });
 
             if (res.ok) {

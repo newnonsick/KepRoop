@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { getAuthenticatedUser } from "@/lib/auth/session";
+import { getAuthContext } from "@/lib/auth/session";
+import { checkRateLimits, logApiKeyUsage } from "@/lib/api-middleware";
 import { AlbumService } from "@/lib/services/album.service";
 
 const createAlbumSchema = z.object({
@@ -67,9 +68,16 @@ const createAlbumSchema = z.object({
  *         description: A list of albums
  */
 export async function GET(request: Request) {
-    const userId = await getAuthenticatedUser();
+    const { userId, apiKey } = await getAuthContext();
     if (!userId) {
         return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    if (apiKey) {
+        const limitCheck = await checkRateLimits(apiKey.id, apiKey.rateLimit, apiKey.rateLimitPerDay, request);
+        if (!limitCheck.ok) {
+            return NextResponse.json(limitCheck.error, { status: limitCheck.status });
+        }
     }
 
     const url = new URL(request.url);
@@ -95,6 +103,10 @@ export async function GET(request: Request) {
         sortBy,
         sortDir
     });
+
+    if (apiKey) {
+        await logApiKeyUsage(apiKey.id, request, 200);
+    }
 
     return NextResponse.json(result);
 }
@@ -133,9 +145,16 @@ export async function GET(request: Request) {
  *         description: Album created successfully
  */
 export async function POST(request: Request) {
-    const userId = await getAuthenticatedUser();
+    const { userId, apiKey } = await getAuthContext();
     if (!userId) {
         return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    if (apiKey) {
+        const limitCheck = await checkRateLimits(apiKey.id, apiKey.rateLimit, apiKey.rateLimitPerDay, request);
+        if (!limitCheck.ok) {
+            return NextResponse.json(limitCheck.error, { status: limitCheck.status });
+        }
     }
 
     try {
@@ -150,13 +169,27 @@ export async function POST(request: Request) {
             coverImageKey: parsed.coverImageKey
         });
 
+        if (apiKey) {
+            await logApiKeyUsage(apiKey.id, request, 200);
+        }
+
         return NextResponse.json({ album });
 
     } catch (error) {
+        let status = 500;
+        let errorBody: any = { error: "Internal Error" };
+
         if (error instanceof z.ZodError) {
-            return NextResponse.json({ error: error.issues }, { status: 400 });
+            status = 400;
+            errorBody = { error: error.issues };
+        } else {
+            console.error(error);
         }
-        console.error(error);
-        return NextResponse.json({ error: "Internal Error" }, { status: 500 });
+
+        if (apiKey) {
+            await logApiKeyUsage(apiKey.id, request, status);
+        }
+
+        return NextResponse.json(errorBody, { status });
     }
 }

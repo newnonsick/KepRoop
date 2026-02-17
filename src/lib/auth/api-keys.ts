@@ -1,8 +1,9 @@
 import { db } from "@/db";
 import { apiKeys, apiKeyLogs, rateLimits } from "@/db/schema";
-import { eq, and, gt, sql } from "drizzle-orm";
+import { eq, and, gt, sql, gte } from "drizzle-orm";
 import { nanoid } from "nanoid";
 import { compare, hash } from "bcryptjs";
+import { RATE_LIMIT_PER_MINUTE, RATE_LIMIT_PER_DAY } from "@/lib/api-key-policy";
 
 const KEY_PREFIX = "kp_";
 const KEY_LENGTH = 32;
@@ -11,7 +12,7 @@ const KEY_LENGTH = 32;
  * Generates a new API key for a user.
  * Returns the raw key (to show to the user once) and the database record.
  */
-export async function generateApiKey(userId: string, name: string, rateLimit: number = 1000) {
+export async function generateApiKey(userId: string, name: string) {
     const keySecret = nanoid(KEY_LENGTH);
     const fullKey = `${KEY_PREFIX}${keySecret}`;
     const keyHash = await hash(fullKey, 10);
@@ -22,7 +23,8 @@ export async function generateApiKey(userId: string, name: string, rateLimit: nu
         name,
         keyHash,
         prefix,
-        rateLimit,
+        rateLimit: RATE_LIMIT_PER_MINUTE,
+        rateLimitPerDay: RATE_LIMIT_PER_DAY,
     }).returning();
 
     return {
@@ -125,5 +127,51 @@ export async function rotateApiKey(oldKeyId: string, userId: string) {
     await revokeApiKey(oldKeyId, userId);
 
     // 3. Generate new key
-    return generateApiKey(userId, oldKey.name, oldKey.rateLimit);
+    return generateApiKey(userId, oldKey.name);
+}
+
+/**
+ * Returns usage stats for a set of API keys.
+ * Returns a map of keyId -> { minuteUsage, dailyUsage }
+ */
+export async function getApiKeyUsageStats(keyIds: string[]): Promise<Record<string, { minuteUsage: number; dailyUsage: number }>> {
+    if (keyIds.length === 0) return {};
+
+    const now = new Date();
+    // UTC Minute Window: truncate seconds and milliseconds
+    const minuteStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), now.getUTCHours(), now.getUTCMinutes(), 0, 0));
+    const dayStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), 0, 0, 0, 0));
+
+    // Get all rate limit records for today for these keys
+    const records = await db
+        .select({
+            keyId: rateLimits.keyId,
+            windowStart: rateLimits.windowStart,
+            requestCount: rateLimits.requestCount,
+        })
+        .from(rateLimits)
+        .where(and(
+            sql`${rateLimits.keyId} IN (${sql.join(keyIds.map(id => sql`${id}::uuid`), sql`, `)})`,
+            gte(rateLimits.windowStart, dayStart),
+        ));
+
+    // Aggregate per key
+    const stats: Record<string, { minuteUsage: number; dailyUsage: number }> = {};
+    for (const id of keyIds) {
+        stats[id] = { minuteUsage: 0, dailyUsage: 0 };
+    }
+
+    for (const record of records) {
+        const kid = record.keyId;
+        if (!stats[kid]) continue;
+
+        stats[kid].dailyUsage += record.requestCount;
+
+        // Check if this record is for the current minute window
+        if (record.windowStart.getTime() === minuteStart.getTime()) {
+            stats[kid].minuteUsage = record.requestCount;
+        }
+    }
+
+    return stats;
 }
