@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getAuthContext } from "@/lib/auth/session";
 import { MapService } from "@/lib/services/map.service";
+import { generateDownloadUrl } from "@/lib/s3";
 
 /**
  * @swagger
@@ -89,9 +90,31 @@ export async function GET(request: NextRequest) {
         });
 
         const dbDur = Math.round(performance.now() - dbStart);
+
+        // Generate signed URLs for thumbnail S3 keys (deduplicate to avoid repeat signing)
+        const urlMap = new Map<string, string>();
+        const allKeys = points.flatMap(p => p.thumbKeys);
+        await Promise.all(
+            allKeys.map(async key => {
+                if (!urlMap.has(key)) {
+                    urlMap.set(key, await generateDownloadUrl(key));
+                }
+            })
+        );
+
+        // Build response with signed thumb URLs
+        const responsePoints = points.map(p => ({
+            id: p.id,
+            lat: p.lat,
+            lng: p.lng,
+            c: p.c,
+            d: p.d,
+            thumbs: p.thumbKeys.map(k => urlMap.get(k) || "").filter(Boolean),
+        }));
+
         const totalDur = Math.round(performance.now() - start);
 
-        const response = NextResponse.json({ points });
+        const response = NextResponse.json({ points: responsePoints });
 
         // Server-Timing header for observability (visible in DevTools)
         response.headers.set("Server-Timing", `db;dur=${dbDur}, total;dur=${totalDur}`);

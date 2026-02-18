@@ -40,12 +40,14 @@ export interface MapPoint {
     lng: number;
     c: number;   // count of photos at this snapped location
     d: string;   // newest date (ISO string)
+    thumbKeys: string[];  // up to 3 thumbnail S3 keys for marker preview
 }
 
 export class MapService {
     /**
      * Get grouped photo points for the map viewport.
      * Uses Permission-First JOIN strategy and Dynamic Precision Grouping.
+     * Returns up to 3 thumbnail S3 keys per group for photo markers.
      */
     static async getPoints(params: MapPointsRequest): Promise<MapPoint[]> {
         const { userId, minLat, maxLat, minLng, maxLng, zoom, startDate, endDate } = params;
@@ -68,13 +70,16 @@ export class MapService {
 
         // Permission-First JOIN query with Dynamic Precision Grouping
         // Query path: album_members (filtered by user) -> images (filtered by bounds)
+        // array_agg collects up to 3 thumbnail keys per group for photo markers
         const result = await db.execute(sql`
             SELECT 
                 FLOOR(i.gps_lat * ${factor}::float8) / ${factor}::float8 as lat,
                 FLOOR(i.gps_lng * ${factor}::float8) / ${factor}::float8 as lng,
                 COUNT(*)::int as c,
                 MIN(i.id::text) as id,
-                MAX(i.date_taken) as d
+                MAX(i.date_taken) as d,
+                (array_agg(i.s3_key_thumb ORDER BY i.date_taken DESC NULLS LAST)
+                  FILTER (WHERE i.s3_key_thumb IS NOT NULL))[1:3] as thumbs
             FROM album_members am
             JOIN images i ON am.album_id = i.album_id
             WHERE 
@@ -96,6 +101,7 @@ export class MapService {
             lng: Number(row.lng),
             c: Number(row.c),
             d: row.d ? new Date(row.d).toISOString() : "",
+            thumbKeys: Array.isArray(row.thumbs) ? row.thumbs.filter(Boolean) : [],
         }));
     }
 

@@ -6,6 +6,7 @@ export interface MapPoint {
     lng: number;
     c: number;
     d: string;
+    thumbs: string[];  // signed thumbnail URLs (up to 3)
 }
 
 interface MapState {
