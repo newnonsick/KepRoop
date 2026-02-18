@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
-import { getAuthenticatedUser } from "@/lib/auth/session";
+import { getAuthContext } from "@/lib/auth/session";
+import { checkRateLimits, logApiKeyUsage } from "@/lib/api-middleware";
 import { ImageService } from "@/lib/services/image.service";
 
 type Context = { params: Promise<{ id: string }> };
@@ -26,11 +27,19 @@ type Context = { params: Promise<{ id: string }> };
  */
 export async function GET(request: Request, context: Context) {
     const { id } = await context.params;
-    const userId = await getAuthenticatedUser();
+    const { userId, apiKey } = await getAuthContext();
+
+    if (apiKey) {
+        const limitCheck = await checkRateLimits(apiKey.id, apiKey.rateLimit, apiKey.rateLimitPerDay, request);
+        if (!limitCheck.ok) {
+            return NextResponse.json(limitCheck.error, { status: limitCheck.status });
+        }
+    }
 
     try {
         const result = await ImageService.getImage(userId, id);
         if (!result) return NextResponse.json({ error: "Not found" }, { status: 404 });
+        if (apiKey) await logApiKeyUsage(apiKey.id, request, 200);
         return NextResponse.json(result);
 
     } catch (error: any) {
@@ -63,12 +72,20 @@ export async function GET(request: Request, context: Context) {
  */
 export async function DELETE(request: Request, context: Context) {
     const { id } = await context.params;
-    const userId = await getAuthenticatedUser();
+    const { userId, apiKey } = await getAuthContext();
 
     if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
+    if (apiKey) {
+        const limitCheck = await checkRateLimits(apiKey.id, apiKey.rateLimit, apiKey.rateLimitPerDay, request);
+        if (!limitCheck.ok) {
+            return NextResponse.json(limitCheck.error, { status: limitCheck.status });
+        }
+    }
+
     try {
         await ImageService.deleteImage(userId, id);
+        if (apiKey) await logApiKeyUsage(apiKey.id, request, 200);
         return NextResponse.json({ success: true });
     } catch (error: any) {
         if (error.message === "Not found") return NextResponse.json({ error: "Not found" }, { status: 404 });

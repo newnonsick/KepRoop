@@ -57,7 +57,8 @@ import { z } from "zod";
  *         description: Folder deleted
  */
 
-import { getAuthenticatedUser } from "@/lib/auth/session";
+import { getAuthContext } from "@/lib/auth/session";
+import { checkRateLimits, logApiKeyUsage } from "@/lib/api-middleware";
 
 const updateFolderSchema = z.object({
     name: z.string().min(1).max(100),
@@ -68,10 +69,17 @@ type Context = { params: Promise<{ id: string; folderId: string }> };
 // PATCH /api/albums/[id]/folders/[folderId] - Rename folder
 export async function PATCH(request: Request, context: Context) {
     const { id: albumId, folderId } = await context.params;
-    const userId = await getAuthenticatedUser();
+    const { userId, apiKey } = await getAuthContext();
 
     if (!userId) {
         return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    if (apiKey) {
+        const limitCheck = await checkRateLimits(apiKey.id, apiKey.rateLimit, apiKey.rateLimitPerDay, request);
+        if (!limitCheck.ok) {
+            return NextResponse.json(limitCheck.error, { status: limitCheck.status });
+        }
     }
 
     const canEdit = await checkAlbumPermission(userId, albumId, "editor");
@@ -105,6 +113,9 @@ export async function PATCH(request: Request, context: Context) {
             metadata: { oldName: existingFolder.name, newName: name },
         });
 
+        if (apiKey) {
+            await logApiKeyUsage(apiKey.id, request, 200);
+        }
         return NextResponse.json({ folder: updatedFolder });
     } catch (error) {
         if (error instanceof z.ZodError) {
@@ -118,10 +129,17 @@ export async function PATCH(request: Request, context: Context) {
 // DELETE /api/albums/[id]/folders/[folderId] - Delete folder
 export async function DELETE(request: Request, context: Context) {
     const { id: albumId, folderId } = await context.params;
-    const userId = await getAuthenticatedUser();
+    const { userId, apiKey } = await getAuthContext();
 
     if (!userId) {
         return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    if (apiKey) {
+        const limitCheck = await checkRateLimits(apiKey.id, apiKey.rateLimit, apiKey.rateLimitPerDay, request);
+        if (!limitCheck.ok) {
+            return NextResponse.json(limitCheck.error, { status: limitCheck.status });
+        }
     }
 
     // Only owner can delete folders (or robust editor check if desired, adhering to RBAC)
@@ -155,6 +173,9 @@ export async function DELETE(request: Request, context: Context) {
             metadata: { name: existingFolder.name },
         });
 
+        if (apiKey) {
+            await logApiKeyUsage(apiKey.id, request, 200);
+        }
         return NextResponse.json({ success: true });
     } catch (error) {
         console.error("Delete folder error:", error);

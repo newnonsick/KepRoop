@@ -6,6 +6,7 @@ import { verifyPassword, hashPassword } from "@/lib/auth/password";
 import { createAccessToken, createRefreshToken } from "@/lib/auth/tokens";
 import { eq } from "drizzle-orm";
 import { cookies } from "next/headers";
+import { getAuthContext } from "@/lib/auth/session";
 
 const loginSchema = z.object({
     email: z.string().email(),
@@ -13,53 +14,12 @@ const loginSchema = z.object({
     remember: z.boolean().optional(),
 });
 
-/**
- * @swagger
- * /api/auth/login:
- *   post:
- *     tags:
- *       - Auth
- *     summary: User login
- *     description: Authenticates a user and sets session cookies.
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             required:
- *               - email
- *               - password
- *             properties:
- *               email:
- *                 type: string
- *                 format: email
- *               password:
- *                 type: string
- *                 format: password
- *               remember:
- *                 type: boolean
- *     responses:
- *       200:
- *         description: Login successful
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 user:
- *                   type: object
- *                   properties:
- *                     id:
- *                       type: string
- *                     email:
- *                       type: string
- *                     name:
- *                       type: string
- *       401:
- *         description: Invalid credentials
- */
 export async function POST(request: Request) {
+    const { apiKey } = await getAuthContext();
+    if (apiKey) {
+        return NextResponse.json({ error: "API Key access not allowed for this endpoint" }, { status: 403 });
+    }
+
     try {
         const body = await request.json();
         const { email, password, remember } = loginSchema.parse(body);

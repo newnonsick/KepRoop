@@ -6,6 +6,7 @@ import { hashPassword } from "@/lib/auth/password";
 import { createAccessToken, createRefreshToken } from "@/lib/auth/tokens";
 import { eq } from "drizzle-orm";
 import { cookies } from "next/headers";
+import { getAuthContext } from "@/lib/auth/session";
 
 const registerSchema = z.object({
     email: z.string().email(),
@@ -19,40 +20,12 @@ const registerSchema = z.object({
     name: z.string().min(2, "Name must be at least 2 characters"),
 });
 
-/**
- * @swagger
- * /api/auth/register:
- *   post:
- *     tags:
- *       - Auth
- *     summary: User registration
- *     description: Creates a new user account and sets session cookies.
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             required:
- *               - email
- *               - password
- *               - name
- *             properties:
- *               email:
- *                 type: string
- *                 format: email
- *               password:
- *                 type: string
- *                 format: password
- *               name:
- *                 type: string
- *     responses:
- *       200:
- *         description: Registration successful
- *       400:
- *         description: Validation error or user already exists
- */
 export async function POST(request: Request) {
+    const { apiKey } = await getAuthContext();
+    if (apiKey) {
+        return NextResponse.json({ error: "API Key access not allowed for this endpoint" }, { status: 403 });
+    }
+
     try {
         const body = await request.json();
         const { email, password, name } = registerSchema.parse(body);

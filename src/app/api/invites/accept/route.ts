@@ -8,37 +8,12 @@ const acceptSchema = z.object({
     code: z.string(),
 });
 
-/**
- * @swagger
- * /api/invites/accept:
- *   post:
- *     tags:
- *       - Invites
- *     summary: Accept invite
- *     description: Accept an album invite code.
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             required:
- *               - code
- *             properties:
- *               code:
- *                 type: string
- *     responses:
- *       200:
- *         description: Invite accepted
- */
+
 export async function POST(request: Request) {
     const { userId, apiKey } = await getAuthContext();
 
     if (apiKey) {
-        const limitCheck = await checkRateLimits(apiKey.id, apiKey.rateLimit, apiKey.rateLimitPerDay, request);
-        if (!limitCheck.ok) {
-            return NextResponse.json(limitCheck.error, { status: limitCheck.status });
-        }
+        return NextResponse.json({ error: "API Key access not allowed for this endpoint" }, { status: 403 });
     }
 
     try {
@@ -63,15 +38,7 @@ export async function POST(request: Request) {
                 maxAge: 60 * 60 * 24 * 30 // 30 days
             });
 
-            if (apiKey) {
-                await logApiKeyUsage(apiKey.id, request, 200);
-            }
-
             return response;
-        }
-
-        if (apiKey) {
-            await logApiKeyUsage(apiKey.id, request, 200);
         }
 
         return NextResponse.json({ success: true, ...result });
@@ -97,10 +64,6 @@ export async function POST(request: Request) {
             errorBody = { error: "Sign in required to accept this invite" };
         } else {
             console.error(error);
-        }
-
-        if (apiKey) {
-            await logApiKeyUsage(apiKey.id, request, status);
         }
 
         return NextResponse.json(errorBody, { status });

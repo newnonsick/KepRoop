@@ -5,7 +5,8 @@ import { db } from "@/db";
 import { images, users } from "@/db/schema";
 import { eq, isNotNull, and, desc, inArray } from "drizzle-orm";
 import { deleteS3Object, generateDownloadUrl } from "@/lib/s3";
-import { getAuthenticatedUser } from "@/lib/auth/session";
+import { getAuthContext } from "@/lib/auth/session";
+import { checkRateLimits, logApiKeyUsage } from "@/lib/api-middleware";
 
 type Context = { params: Promise<{ id: string }> };
 
@@ -55,9 +56,16 @@ type Context = { params: Promise<{ id: string }> };
  */
 export async function GET(request: Request, context: Context) {
     const { id: albumId } = await context.params;
-    const userId = await getAuthenticatedUser();
+    const { userId, apiKey } = await getAuthContext();
 
     if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+    if (apiKey) {
+        const limitCheck = await checkRateLimits(apiKey.id, apiKey.rateLimit, apiKey.rateLimitPerDay, request);
+        if (!limitCheck.ok) {
+            return NextResponse.json(limitCheck.error, { status: limitCheck.status });
+        }
+    }
 
     // Check permission: Owner or Editor can view trash
     // User requested: "Editor can View trash"
@@ -85,14 +93,27 @@ export async function GET(request: Request, context: Context) {
         url: await generateDownloadUrl(img.s3Key!)
     })));
 
+
+
+    if (apiKey) {
+        await logApiKeyUsage(apiKey.id, request, 200);
+    }
+
     return NextResponse.json({ images: imagesWithUrls });
 }
 
 export async function DELETE(request: Request, context: Context) {
     const { id: albumId } = await context.params;
-    const userId = await getAuthenticatedUser();
+    const { userId, apiKey } = await getAuthContext();
 
     if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+    if (apiKey) {
+        const limitCheck = await checkRateLimits(apiKey.id, apiKey.rateLimit, apiKey.rateLimitPerDay, request);
+        if (!limitCheck.ok) {
+            return NextResponse.json(limitCheck.error, { status: limitCheck.status });
+        }
+    }
 
     // Check permission: Only Owner can permanent delete
     // User requested: "make only owner can permanent delete a photo in recyclebin"
@@ -135,6 +156,12 @@ export async function DELETE(request: Request, context: Context) {
 
     if (imagesToDelete.length > 0) {
         await db.delete(images).where(inArray(images.id, imagesToDelete.map(img => img.id)));
+    }
+
+
+
+    if (apiKey) {
+        await logApiKeyUsage(apiKey.id, request, 200);
     }
 
     return NextResponse.json({ success: true, count: imagesToDelete.length });

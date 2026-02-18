@@ -4,7 +4,8 @@ import { albumMembers, albums } from "@/db/schema";
 import { checkAlbumPermission, getAlbumRole } from "@/lib/auth/rbac";
 import { eq, and } from "drizzle-orm";
 import { z } from "zod";
-import { getAuthenticatedUser } from "@/lib/auth/session";
+import { getAuthContext } from "@/lib/auth/session";
+import { checkRateLimits, logApiKeyUsage } from "@/lib/api-middleware";
 
 // Update schema to include 'owner'
 const updateMemberSchema = z.object({
@@ -68,9 +69,16 @@ type Context = { params: Promise<{ id: string; memberId: string }> };
  */
 export async function PATCH(request: Request, context: Context) {
     const { id: albumId, memberId } = await context.params;
-    const userId = await getAuthenticatedUser();
+    const { userId, apiKey } = await getAuthContext();
 
     if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+    if (apiKey) {
+        const limitCheck = await checkRateLimits(apiKey.id, apiKey.rateLimit, apiKey.rateLimitPerDay, request);
+        if (!limitCheck.ok) {
+            return NextResponse.json(limitCheck.error, { status: limitCheck.status });
+        }
+    }
 
     // Only owners can change roles
     const isOwner = await checkAlbumPermission(userId, albumId, "owner");
@@ -132,9 +140,16 @@ export async function PATCH(request: Request, context: Context) {
 
 export async function DELETE(request: Request, context: Context) {
     const { id: albumId, memberId } = await context.params;
-    const userId = await getAuthenticatedUser();
+    const { userId, apiKey } = await getAuthContext();
 
     if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+    if (apiKey) {
+        const limitCheck = await checkRateLimits(apiKey.id, apiKey.rateLimit, apiKey.rateLimitPerDay, request);
+        if (!limitCheck.ok) {
+            return NextResponse.json(limitCheck.error, { status: limitCheck.status });
+        }
+    }
 
     const isSelf = userId === memberId;
     const isOwner = await checkAlbumPermission(userId, albumId, "owner");

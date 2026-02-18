@@ -3,17 +3,17 @@ import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { verifyAccessToken } from "@/lib/auth/tokens";
 import { revokeApiKey } from "@/lib/auth/api-keys";
-import { getAuthenticatedUser } from "@/lib/auth/session";
+import { getAuthContext } from "@/lib/auth/session";
 
-/**
- * @swagger
-// ...
- */
 export async function DELETE(
     request: Request,
     { params }: { params: Promise<{ id: string }> }
 ) {
-    const userId = await getAuthenticatedUser();
+    const { userId, apiKey } = await getAuthContext();
+
+    if (apiKey) {
+        return NextResponse.json({ error: "API Key access not allowed for this endpoint" }, { status: 403 });
+    }
 
     if (!userId) {
         return NextResponse.json({ error: "Unauthorized" }, { status: 401 });

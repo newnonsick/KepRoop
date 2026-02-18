@@ -4,7 +4,8 @@ import { checkAlbumPermission } from "@/lib/auth/rbac";
 import { logActivity } from "@/lib/activity";
 import { db } from "@/db";
 import { images } from "@/db/schema";
-import { getAuthenticatedUser } from "@/lib/auth/session";
+import { getAuthContext } from "@/lib/auth/session";
+import { checkRateLimits, logApiKeyUsage } from "@/lib/api-middleware";
 
 /**
  * @swagger
@@ -43,9 +44,16 @@ import { getAuthenticatedUser } from "@/lib/auth/session";
  *         description: Image registered
  */
 export async function POST(request: Request) {
-    const userId = await getAuthenticatedUser();
+    const { userId, apiKey } = await getAuthContext();
     if (!userId) {
         return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    if (apiKey) {
+        const limitCheck = await checkRateLimits(apiKey.id, apiKey.rateLimit, apiKey.rateLimitPerDay, request);
+        if (!limitCheck.ok) {
+            return NextResponse.json(limitCheck.error, { status: limitCheck.status });
+        }
     }
 
     try {
@@ -114,6 +122,10 @@ export async function POST(request: Request) {
                 height: height,
             },
         });
+
+        if (apiKey) {
+            await logApiKeyUsage(apiKey.id, request, 201);
+        }
 
         return NextResponse.json({
             success: true,

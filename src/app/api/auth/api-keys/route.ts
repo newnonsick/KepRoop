@@ -3,25 +3,16 @@ import { NextResponse } from "next/server";
 import { headers, cookies } from "next/headers";
 import { verifyAccessToken } from "@/lib/auth/tokens";
 import { generateApiKey, listApiKeys, getApiKeyUsageStats } from "@/lib/auth/api-keys";
-import { getAuthenticatedUser } from "@/lib/auth/session";
+import { getAuthContext } from "@/lib/auth/session";
 import { MAX_API_KEYS_PER_USER } from "@/lib/api-middleware";
 
-/**
- * @swagger
- * /api/auth/api-keys:
- *   get:
- *     tags:
- *       - Auth
- *     summary: List API keys
- *     description: List all API keys for the authenticated user, including usage stats.
- *     responses:
- *       200:
- *         description: List of API keys with usage data
- *       401:
- *         description: Unauthorized
- */
+
 export async function GET(request: Request) {
-    const userId = await getAuthenticatedUser();
+    const { userId, apiKey } = await getAuthContext();
+
+    if (apiKey) {
+        return NextResponse.json({ error: "API Key access not allowed for this endpoint" }, { status: 403 });
+    }
 
     if (!userId) {
         return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -41,28 +32,12 @@ export async function GET(request: Request) {
     return NextResponse.json(enrichedKeys);
 }
 
-/**
- * @swagger
- * /api/auth/api-keys:
- *   post:
- *     tags:
- *       - Auth
- *     summary: Create API key
- *     description: Create a new API key
- *     requestBody:
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             properties:
- *               name:
- *                 type: string
- *     responses:
- *       200:
- *         description: The created API key (only shown once)
- */
 export async function POST(request: Request) {
-    const userId = await getAuthenticatedUser();
+    const { userId, apiKey } = await getAuthContext();
+
+    if (apiKey) {
+        return NextResponse.json({ error: "API Key access not allowed for this endpoint" }, { status: 403 });
+    }
 
     if (!userId) {
         return NextResponse.json({ error: "Unauthorized" }, { status: 401 });

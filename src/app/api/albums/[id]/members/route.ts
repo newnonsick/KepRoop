@@ -6,13 +6,8 @@ import { albumMembers } from "@/db/schema";
 import { checkAlbumPermission } from "@/lib/auth/rbac";
 import { eq, and } from "drizzle-orm";
 
-async function getUserId() {
-    const cookieStore = await cookies();
-    const token = cookieStore.get("accessToken")?.value;
-    if (!token) return null;
-    const payload = await verifyAccessToken(token);
-    return payload?.userId;
-}
+import { getAuthContext } from "@/lib/auth/session";
+import { checkRateLimits, logApiKeyUsage } from "@/lib/api-middleware";
 
 type Context = { params: Promise<{ id: string }> };
 
@@ -36,10 +31,17 @@ type Context = { params: Promise<{ id: string }> };
  */
 export async function GET(request: Request, context: Context) {
     const { id: albumId } = await context.params;
-    const userId = await getUserId();
+    const { userId, apiKey } = await getAuthContext();
 
     if (!userId) {
         return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    if (apiKey) {
+        const limitCheck = await checkRateLimits(apiKey.id, apiKey.rateLimit, apiKey.rateLimitPerDay, request);
+        if (!limitCheck.ok) {
+            return NextResponse.json(limitCheck.error, { status: limitCheck.status });
+        }
     }
 
     // Check if user has at least viewer access
@@ -63,6 +65,12 @@ export async function GET(request: Request, context: Context) {
             },
             orderBy: (albumMembers, { asc }) => [asc(albumMembers.joinedAt)],
         });
+
+
+
+        if (apiKey) {
+            await logApiKeyUsage(apiKey.id, request, 200);
+        }
 
         return NextResponse.json({ members });
     } catch (error) {

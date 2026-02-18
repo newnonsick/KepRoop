@@ -51,11 +51,8 @@ import { z } from "zod";
  *         description: Folder created
  */
 
-import { getAuthenticatedUser } from "@/lib/auth/session";
-
-async function getUserId() {
-    return getAuthenticatedUser();
-}
+import { getAuthContext } from "@/lib/auth/session";
+import { checkRateLimits, logApiKeyUsage } from "@/lib/api-middleware";
 
 const createFolderSchema = z.object({
     name: z.string().min(1).max(100),
@@ -70,7 +67,14 @@ type Context = { params: Promise<{ id: string }> };
 // GET /api/albums/[id]/folders - List all folders in album
 export async function GET(request: Request, context: Context) {
     const { id: albumId } = await context.params;
-    const userId = await getUserId();
+    const { userId, apiKey } = await getAuthContext();
+
+    if (apiKey) {
+        const limitCheck = await checkRateLimits(apiKey.id, apiKey.rateLimit, apiKey.rateLimitPerDay, request);
+        if (!limitCheck.ok) {
+            return NextResponse.json(limitCheck.error, { status: limitCheck.status });
+        }
+    }
 
     // Check viewer permission
     let hasAccess = false;
@@ -93,16 +97,26 @@ export async function GET(request: Request, context: Context) {
         orderBy: (folders, { asc }) => [asc(folders.name)],
     });
 
+    if (apiKey) {
+        await logApiKeyUsage(apiKey.id, request, 200);
+    }
     return NextResponse.json({ folders: albumFolders });
 }
 
 // POST /api/albums/[id]/folders - Create a new folder
 export async function POST(request: Request, context: Context) {
     const { id: albumId } = await context.params;
-    const userId = await getUserId();
+    const { userId, apiKey } = await getAuthContext();
 
     if (!userId) {
         return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    if (apiKey) {
+        const limitCheck = await checkRateLimits(apiKey.id, apiKey.rateLimit, apiKey.rateLimitPerDay, request);
+        if (!limitCheck.ok) {
+            return NextResponse.json(limitCheck.error, { status: limitCheck.status });
+        }
     }
 
     // Check editor permission
@@ -129,6 +143,9 @@ export async function POST(request: Request, context: Context) {
             metadata: { name },
         });
 
+        if (apiKey) {
+            await logApiKeyUsage(apiKey.id, request, 200);
+        }
         return NextResponse.json({ folder });
 
     } catch (error) {

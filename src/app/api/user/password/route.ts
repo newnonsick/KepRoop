@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { getAuthenticatedUser } from "@/lib/auth/session";
+import { getAuthContext } from "@/lib/auth/session";
 import { UserService } from "@/lib/services/user.service";
 const updatePasswordSchema = z.object({
     currentPassword: z.string().optional(),
@@ -12,33 +12,11 @@ const updatePasswordSchema = z.object({
         .regex(/[0-9]/, "Password must contain at least one number")
         .regex(/[\W_]/, "Password must contain at least one special character"),
 });
-/**
- * @swagger
- * /api/user/password:
- *   post:
- *     tags:
- *       - User
- *     summary: Change password
- *     description: Change the current user's password.
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             required:
- *               - newPassword
- *             properties:
- *               currentPassword:
- *                 type: string
- *               newPassword:
- *                 type: string
- *     responses:
- *       200:
- *         description: Password updated
- */
 export async function POST(request: Request) {
-    const userId = await getAuthenticatedUser();
+    const { userId, apiKey } = await getAuthContext();
+    if (apiKey) {
+        return NextResponse.json({ error: "API Key access not allowed for this endpoint" }, { status: 403 });
+    }
     if (!userId) {
         return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }

@@ -10,25 +10,7 @@ import { hashPassword, verifyPassword } from "@/lib/auth/password";
 import { db } from "@/db";
 import { users, refreshTokens } from "@/db/schema";
 import { eq } from "drizzle-orm";
-
-/**
- * @swagger
- * /api/auth/me:
- *   get:
- *     tags:
- *       - Auth
- *     summary: Get current user
- *     description: Returns the currently authenticated user based on cookies or tokens.
- *     security:
- *       - CookieAuth: []
- *       - BearerAuth: []
- *     responses:
- *       200:
- *         description: Current user data
- *       401:
- *         description: Not authenticated
- */
-import { getAuthenticatedUser } from "@/lib/auth/session";
+import { getAuthenticatedUser, getAuthContext } from "@/lib/auth/session";
 
 /**
  * @swagger
@@ -37,7 +19,11 @@ import { getAuthenticatedUser } from "@/lib/auth/session";
 export async function GET() {
     // 0. Check for valid session (Cookie or API Key)
     // This handles both "Authorization: Bearer/Api-Key" and "Cookie: accessToken"
-    const authenticatedUserId = await getAuthenticatedUser();
+    const { userId: authenticatedUserId, apiKey } = await getAuthContext();
+
+    if (apiKey) {
+        return NextResponse.json({ error: "API Key access not allowed for this endpoint" }, { status: 403 });
+    }
 
     if (authenticatedUserId) {
         const user = await db.query.users.findFirst({

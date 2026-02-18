@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { getAuthenticatedUser } from "@/lib/auth/session";
+import { getAuthContext } from "@/lib/auth/session";
+import { checkRateLimits, logApiKeyUsage } from "@/lib/api-middleware";
 import { ImageService } from "@/lib/services/image.service";
 
 // Allow longer timeout
@@ -37,9 +38,16 @@ const MAX_FILE_SIZE = 50 * 1024 * 1024;
  *         description: Image uploaded and processed
  */
 export async function POST(request: Request) {
-    const userId = await getAuthenticatedUser();
+    const { userId, apiKey } = await getAuthContext();
     if (!userId) {
         return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    if (apiKey) {
+        const limitCheck = await checkRateLimits(apiKey.id, apiKey.rateLimit, apiKey.rateLimitPerDay, request);
+        if (!limitCheck.ok) {
+            return NextResponse.json(limitCheck.error, { status: limitCheck.status });
+        }
     }
 
     try {
@@ -65,6 +73,10 @@ export async function POST(request: Request) {
         }
 
         const image = await ImageService.processAndUpload(userId, file, albumId, folderId as string | undefined);
+
+        if (apiKey) {
+            await logApiKeyUsage(apiKey.id, request, 201);
+        }
 
         return NextResponse.json({
             image: {

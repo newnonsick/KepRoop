@@ -3,6 +3,7 @@ import { cookies } from "next/headers";
 import { db } from "@/db";
 import { refreshTokens } from "@/db/schema";
 import { eq } from "drizzle-orm";
+import { getAuthContext } from "@/lib/auth/session";
 // Need to hash token to find it? No, we store hashed, so we can't find by plain token easily unless we verify validity then match hash?
 // Or we revoke ALL tokens for user? Or we rely on the client sending the refresh token to revoke IT specifically?
 // Best practice: The logout endpoint receives the cookie. We get the refresh token from cookie.
@@ -32,19 +33,12 @@ import { eq } from "drizzle-orm";
 // `SignJWT` can set `jti`.
 // I will check `src/lib/auth/tokens.ts`.
 
-/**
- * @swagger
- * /api/auth/logout:
- *   post:
- *     tags:
- *       - Auth
- *     summary: User logout
- *     description: Clears session cookies.
- *     responses:
- *       200:
- *         description: Logout successful
- */
 export async function POST() {
+    const { apiKey } = await getAuthContext();
+    if (apiKey) {
+        return NextResponse.json({ error: "API Key access not allowed for this endpoint" }, { status: 403 });
+    }
+
     // Placeholder logout - just clears cookies for now until I fix the token ID logic.
     // Ideally we should also remove from DB to prevent reuse if stolen.
 

@@ -4,7 +4,8 @@ import { generateDownloadUrl } from "@/lib/s3";
 import { db } from "@/db";
 import { images } from "@/db/schema";
 import { eq } from "drizzle-orm";
-import { getAuthenticatedUser } from "@/lib/auth/session";
+import { getAuthContext } from "@/lib/auth/session";
+import { checkRateLimits, logApiKeyUsage } from "@/lib/api-middleware";
 
 /**
  * @swagger
@@ -28,12 +29,19 @@ export async function GET(
     request: Request,
     { params }: { params: Promise<{ id: string }> }
 ) {
-    const userId = await getAuthenticatedUser();
+    const { userId, apiKey } = await getAuthContext();
     const resolvedParams = await params;
     const imageId = resolvedParams.id;
 
     if (!userId) {
         return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    if (apiKey) {
+        const limitCheck = await checkRateLimits(apiKey.id, apiKey.rateLimit, apiKey.rateLimitPerDay, request);
+        if (!limitCheck.ok) {
+            return NextResponse.json(limitCheck.error, { status: limitCheck.status });
+        }
     }
 
     try {
@@ -72,6 +80,10 @@ export async function GET(
 
         // Use original filename or fallback
         const filename = image.originalFilename || `photo-${image.id}.webp`;
+
+        if (apiKey) {
+            await logApiKeyUsage(apiKey.id, request, 200);
+        }
 
         return NextResponse.json({ url, filename });
 

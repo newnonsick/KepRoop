@@ -12,12 +12,6 @@ export const getApiDocs = async () => {
             security: [
                 {
                     ApiKeyAuth: [],
-                },
-                {
-                    BearerAuth: [],
-                },
-                {
-                    CookieAuth: [],
                 }
             ],
             components: {
@@ -27,17 +21,6 @@ export const getApiDocs = async () => {
                         in: "header",
                         name: "Authorization",
                         description: "Prefix with 'Api-Key ' or 'Bearer kp_'"
-                    },
-                    BearerAuth: {
-                        type: "http",
-                        scheme: "bearer",
-                        bearerFormat: "JWT",
-                    },
-                    CookieAuth: {
-                        type: "apiKey",
-                        in: "cookie",
-                        name: "accessToken",
-                        description: "Browser Session Cookie (Automatically used if logged in)"
                     }
                 },
             },

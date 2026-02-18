@@ -7,6 +7,7 @@ import { createAccessToken, createRefreshToken } from "@/lib/auth/tokens";
 import { hashPassword } from "@/lib/auth/password";
 import { eq } from "drizzle-orm";
 import { cookies } from "next/headers";
+import { getAuthContext } from "@/lib/auth/session";
 
 const googleSchema = z.object({
     idToken: z.string(),
@@ -15,30 +16,12 @@ const googleSchema = z.object({
 const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID!;
 const JWKS = createRemoteJWKSet(new URL('https://www.googleapis.com/oauth2/v3/certs'));
 
-/**
- * @swagger
- * /api/auth/google:
- *   post:
- *     tags:
- *       - Auth
- *     summary: Google Login/Register
- *     description: Exchanges a Google ID Token for a session.
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             required:
- *               - idToken
- *             properties:
- *               idToken:
- *                 type: string
- *     responses:
- *       200:
- *         description: Authentication successful
- */
 export async function POST(request: Request) {
+    const { apiKey } = await getAuthContext();
+    if (apiKey) {
+        return NextResponse.json({ error: "API Key access not allowed for this endpoint" }, { status: 403 });
+    }
+
     try {
         const body = await request.json();
         const { idToken } = googleSchema.parse(body);

@@ -3,7 +3,8 @@ import { db } from "@/db";
 import { activityLogs, users } from "@/db/schema";
 import { checkAlbumPermission } from "@/lib/auth/rbac";
 import { eq, desc } from "drizzle-orm";
-import { getAuthenticatedUser } from "@/lib/auth/session";
+import { getAuthContext } from "@/lib/auth/session";
+import { checkRateLimits, logApiKeyUsage } from "@/lib/api-middleware";
 
 type Context = { params: Promise<{ id: string }> };
 
@@ -35,10 +36,17 @@ type Context = { params: Promise<{ id: string }> };
  */
 export async function GET(request: Request, context: Context) {
     const { id: albumId } = await context.params;
-    const userId = await getAuthenticatedUser();
+    const { userId, apiKey } = await getAuthContext();
 
     if (!userId) {
         return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    if (apiKey) {
+        const limitCheck = await checkRateLimits(apiKey.id, apiKey.rateLimit, apiKey.rateLimitPerDay, request);
+        if (!limitCheck.ok) {
+            return NextResponse.json(limitCheck.error, { status: limitCheck.status });
+        }
     }
 
     // Only OWNER (Original or Joint) can view activity logs
@@ -84,6 +92,9 @@ export async function GET(request: Request, context: Context) {
             nextCursor = logs[logs.length - 1].createdAt.toISOString();
         }
 
+        if (apiKey) {
+            await logApiKeyUsage(apiKey.id, request, 200);
+        }
         return NextResponse.json({ logs, nextCursor });
     } catch (error) {
         console.error("Failed to fetch activity logs:", error);

@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import archiver from "archiver";
-import { getAuthenticatedUser } from "@/lib/auth/session";
+import { getAuthContext } from "@/lib/auth/session";
+import { checkRateLimits, logApiKeyUsage } from "@/lib/api-middleware";
 import { ImageService } from "@/lib/services/image.service";
 import { getS3Object } from "@/lib/s3";
 
@@ -45,9 +46,16 @@ const bulkSchema = z.object({
  *         description: Operation successful
  */
 export async function POST(request: Request) {
-    const userId = await getAuthenticatedUser();
+    const { userId, apiKey } = await getAuthContext();
     if (!userId) {
         return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    if (apiKey) {
+        const limitCheck = await checkRateLimits(apiKey.id, apiKey.rateLimit, apiKey.rateLimitPerDay, request);
+        if (!limitCheck.ok) {
+            return NextResponse.json(limitCheck.error, { status: limitCheck.status });
+        }
     }
 
     try {
@@ -56,10 +64,12 @@ export async function POST(request: Request) {
 
         if (action === "delete") {
             const count = await ImageService.bulkDelete(userId, albumId, imageIds);
+            if (apiKey) await logApiKeyUsage(apiKey.id, request, 200);
             return NextResponse.json({ success: true, deletedCount: count });
 
         } else if (action === "move") {
             const count = await ImageService.bulkMove(userId, albumId, imageIds, targetFolderId || null);
+            if (apiKey) await logApiKeyUsage(apiKey.id, request, 200);
             return NextResponse.json({ success: true, movedCount: count });
 
         } else if (action === "download") {
@@ -97,6 +107,8 @@ export async function POST(request: Request) {
                 console.error("Archive failed", err);
                 writer.abort(err);
             });
+
+            if (apiKey) await logApiKeyUsage(apiKey.id, request, 200);
 
             return new NextResponse(stream.readable, {
                 headers: {

@@ -5,22 +5,14 @@ import { refreshTokens } from "@/db/schema";
 import { verifyRefreshToken, createAccessToken, createRefreshToken } from "@/lib/auth/tokens";
 import { hashPassword, verifyPassword } from "@/lib/auth/password";
 import { eq } from "drizzle-orm";
+import { getAuthContext } from "@/lib/auth/session";
 
-/**
- * @swagger
- * /api/auth/refresh:
- *   post:
- *     tags:
- *       - Auth
- *     summary: Refresh access token
- *     description: Uses the httpOnly refreshToken cookie to issue a new accessToken.
- *     responses:
- *       200:
- *         description: Token refreshed successfully
- *       401:
- *         description: Invalid or expired refresh token
- */
-export async function POST() {
+export async function POST(request: Request) {
+    const { apiKey } = await getAuthContext();
+    if (apiKey) {
+        return NextResponse.json({ error: "API Key access not allowed for this endpoint" }, { status: 403 });
+    }
+
     try {
         const cookieStore = await cookies();
         const oldRefreshToken = cookieStore.get("refreshToken")?.value;

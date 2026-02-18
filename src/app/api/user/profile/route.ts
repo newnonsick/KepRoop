@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { getAuthenticatedUser } from "@/lib/auth/session";
+import { getAuthContext } from "@/lib/auth/session";
+import { checkRateLimits, logApiKeyUsage } from "@/lib/api-middleware";
 import { UserService } from "@/lib/services/user.service";
 
 const updateProfileSchema = z.object({
@@ -31,9 +32,16 @@ const updateProfileSchema = z.object({
  *         description: Profile updated
  */
 export async function PATCH(request: Request) {
-    const userId = await getAuthenticatedUser();
+    const { userId, apiKey } = await getAuthContext();
     if (!userId) {
         return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    if (apiKey) {
+        const limitCheck = await checkRateLimits(apiKey.id, apiKey.rateLimit, apiKey.rateLimitPerDay, request);
+        if (!limitCheck.ok) {
+            return NextResponse.json(limitCheck.error, { status: limitCheck.status });
+        }
     }
 
     try {
@@ -42,12 +50,19 @@ export async function PATCH(request: Request) {
 
         const result = await UserService.updateProfile(userId, { name });
 
+        if (apiKey) {
+            await logApiKeyUsage(apiKey.id, request, 200);
+        }
+
         return NextResponse.json(result);
     } catch (error: any) {
         if (error instanceof z.ZodError) {
             return NextResponse.json({ error: error.issues[0].message }, { status: 400 });
         }
         console.error(error);
+        if (apiKey) {
+            await logApiKeyUsage(apiKey.id, request, 500);
+        }
         return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
     }
 }
