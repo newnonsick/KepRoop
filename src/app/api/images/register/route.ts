@@ -89,6 +89,27 @@ export async function POST(request: Request) {
         // For display/thumb, we'll currently reuse the original or client needs to upload valid thumbnails.
         // STRATEGY: For now, point everything to the original. Next.js <Image> will optimize it on the fly.
 
+        // Parse and validate GPS coordinates for map feature
+        // Handles both decimal numbers and DMS comma-separated strings ("40,27,28.97")
+        function parseGpsValue(val: any): number | null {
+            if (val == null) return null;
+            // If it's already a finite number, use it directly
+            const num = Number(val);
+            if (isFinite(num)) return num;
+            // Try to parse DMS format: "degrees,minutes,seconds"
+            const str = String(val);
+            const parts = str.split(',').map(p => parseFloat(p.trim()));
+            if (parts.length === 3 && parts.every(p => isFinite(p))) {
+                return parts[0] + parts[1] / 60 + parts[2] / 3600;
+            }
+            return null;
+        }
+
+        const rawLat = parseGpsValue(exif?.gpsLatitude);
+        const rawLng = parseGpsValue(exif?.gpsLongitude);
+        const gpsLat = rawLat != null && rawLat >= -90 && rawLat <= 90 ? rawLat : null;
+        const gpsLng = rawLng != null && rawLng >= -180 && rawLng <= 180 ? rawLng : null;
+
         const [image] = await db.insert(images).values({
             albumId,
             folderId: folderId || null,
@@ -107,6 +128,9 @@ export async function POST(request: Request) {
             cameraModel: exif?.cameraModel || null,
             gpsLatitude: exif?.gpsLatitude?.toString() || null,
             gpsLongitude: exif?.gpsLongitude?.toString() || null,
+            // Numeric GPS for Photo Map queries
+            gpsLat,
+            gpsLng,
         }).returning();
 
         await logActivity({

@@ -150,6 +150,12 @@ export class ImageService {
             uploadBuffer(keyThumb, processed.thumbBuffer, "image/webp"),
         ]);
 
+        // Parse and validate GPS coordinates for map feature
+        const rawLat = processed.exif?.gpsLatitude != null ? Number(processed.exif.gpsLatitude) : null;
+        const rawLng = processed.exif?.gpsLongitude != null ? Number(processed.exif.gpsLongitude) : null;
+        const gpsLat = rawLat != null && isFinite(rawLat) && rawLat >= -90 && rawLat <= 90 ? rawLat : null;
+        const gpsLng = rawLng != null && isFinite(rawLng) && rawLng >= -180 && rawLng <= 180 ? rawLng : null;
+
         const [image] = await db.insert(images).values({
             albumId,
             folderId: folderId || null,
@@ -168,6 +174,8 @@ export class ImageService {
             cameraModel: processed.exif?.cameraModel || null,
             gpsLatitude: processed.exif?.gpsLatitude?.toString() || null,
             gpsLongitude: processed.exif?.gpsLongitude?.toString() || null,
+            gpsLat,
+            gpsLng,
         }).returning();
 
         await logActivity({

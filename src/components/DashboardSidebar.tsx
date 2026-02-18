@@ -1,6 +1,7 @@
 "use client";
 
-import { LayoutGrid, User, Users, Plus, Heart } from "lucide-react";
+import { LayoutGrid, User, Users, Plus, Heart, MapPin } from "lucide-react";
+import Link from "next/link";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { CreateAlbumDialog } from "@/components/CreateAlbumDialog";
@@ -85,6 +86,19 @@ export function DashboardSidebar({
                     );
                 })}
             </nav>
+
+            {/* Map Link */}
+            <div className="px-2 mt-4 pt-4 border-t border-slate-100 dark:border-slate-800">
+                <Link href="/map">
+                    <Button
+                        variant="ghost"
+                        className="w-full justify-start gap-3 text-slate-500 dark:text-slate-400 hover:bg-blue-50 dark:hover:bg-blue-900/30 hover:text-blue-600 dark:hover:text-blue-400 rounded-xl h-10 px-4 transition-all group"
+                    >
+                        <MapPin className="h-4 w-4 text-slate-400 dark:text-slate-500 group-hover:text-blue-500 transition-colors" />
+                        <span className="font-medium">Photo Map</span>
+                    </Button>
+                </Link>
+            </div>
 
         </aside>
     );

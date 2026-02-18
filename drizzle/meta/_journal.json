@@ -29,6 +29,13 @@
       "when": 1771361161901,
       "tag": "0003_parallel_human_robot",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1771444973940,
+      "tag": "0004_photo_map_geo_columns",
+      "breakpoints": true
     }
   ]
 }

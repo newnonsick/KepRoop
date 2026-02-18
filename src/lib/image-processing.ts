@@ -68,22 +68,38 @@ export async function processImage(buffer: Buffer): Promise<ProcessedImage> {
 }
 
 /**
- * Extract EXIF metadata from an image buffer
+ * Extract EXIF metadata from an image buffer.
+ * Uses exifr.gps() for proper decimal GPS coordinates (exifr.parse with pick
+ * returns raw DMS arrays which can't be directly used as numbers).
  */
 async function extractExif(buffer: Buffer): Promise<ProcessedImage['exif']> {
     try {
+        // Get EXIF metadata (non-GPS)
         const data = await exifr.parse(buffer, {
-            pick: ['DateTimeOriginal', 'Make', 'Model', 'GPSLatitude', 'GPSLongitude']
+            pick: ['DateTimeOriginal', 'Make', 'Model']
         });
 
-        if (!data) return null;
+        // Get GPS as decimal degrees (exifr.gps handles DMS->decimal conversion)
+        let gpsLatitude: number | undefined;
+        let gpsLongitude: number | undefined;
+        try {
+            const gps = await exifr.gps(buffer);
+            if (gps) {
+                gpsLatitude = gps.latitude;
+                gpsLongitude = gps.longitude;
+            }
+        } catch {
+            // No GPS data, that's fine
+        }
+
+        if (!data && gpsLatitude == null) return null;
 
         return {
-            dateTaken: data.DateTimeOriginal ? new Date(data.DateTimeOriginal) : undefined,
-            cameraMake: data.Make,
-            cameraModel: data.Model,
-            gpsLatitude: data.GPSLatitude,
-            gpsLongitude: data.GPSLongitude,
+            dateTaken: data?.DateTimeOriginal ? new Date(data.DateTimeOriginal) : undefined,
+            cameraMake: data?.Make,
+            cameraModel: data?.Model,
+            gpsLatitude,
+            gpsLongitude,
         };
     } catch (error) {
         console.error('Failed to extract EXIF:', error);

@@ -1,5 +1,5 @@
 
-import { pgTable, uuid, text, timestamp, boolean, integer, index, primaryKey } from "drizzle-orm/pg-core";
+import { pgTable, uuid, text, timestamp, boolean, integer, doublePrecision, index, primaryKey } from "drizzle-orm/pg-core";
 import { relations } from "drizzle-orm";
 
 const timestamps = {
@@ -41,6 +41,8 @@ export const albumMembers = pgTable("album_members", {
     pk: primaryKey({ columns: [table.userId, table.albumId] }),
     userIdIdx: index("album_members_user_id_idx").on(table.userId),
     albumIdIdx: index("album_members_album_id_idx").on(table.albumId),
+    // Composite index for Photo Map: User -> Album lookup
+    userAlbumIdx: index("idx_album_members_user_album").on(table.userId, table.albumId),
 }));
 
 // Album Invites Table
@@ -94,12 +96,18 @@ export const images = pgTable("images", {
     gpsLatitude: text("gps_latitude"),
     gpsLongitude: text("gps_longitude"),
 
+    // Numeric GPS for Photo Map (high-performance spatial queries)
+    gpsLat: doublePrecision("gps_lat"),
+    gpsLng: doublePrecision("gps_lng"),
+
     deletedBy: uuid("deleted_by").references(() => users.id, { onDelete: "set null" }),
     ...timestamps,
 }, (table) => ({
     albumIdIdx: index("images_album_id_idx").on(table.albumId),
     folderIdIdx: index("images_folder_id_idx").on(table.folderId),
     dateTakenIdx: index("images_date_taken_idx").on(table.dateTaken),
+    // Composite index for Photo Map: Permission-First -> Space -> Time
+    albumGeoTimeIdx: index("idx_images_album_geo_time").on(table.albumId, table.gpsLat, table.gpsLng, table.dateTaken),
 }));
 
 // Activity Logs Table - Track actions (database only, no UI)

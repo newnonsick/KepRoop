@@ -324,16 +324,29 @@ export default function AlbumDetailPage({ params }: { params: Promise<{ id: stri
             const exifr = (await import("exifr")).default;
             let exifData = null;
             try {
+                // Parse non-GPS metadata
                 const parsed = await exifr.parse(file, {
-                    pick: ['DateTimeOriginal', 'Make', 'Model', 'GPSLatitude', 'GPSLongitude']
+                    pick: ['DateTimeOriginal', 'Make', 'Model']
                 });
-                if (parsed) {
+
+                // Use exifr.gps() for proper DMS -> decimal conversion
+                let gpsLatitude: number | undefined;
+                let gpsLongitude: number | undefined;
+                try {
+                    const gps = await exifr.gps(file);
+                    if (gps) {
+                        gpsLatitude = gps.latitude;
+                        gpsLongitude = gps.longitude;
+                    }
+                } catch { /* No GPS data */ }
+
+                if (parsed || gpsLatitude != null) {
                     exifData = {
-                        dateTaken: parsed.DateTimeOriginal,
-                        cameraMake: parsed.Make,
-                        cameraModel: parsed.Model,
-                        gpsLatitude: parsed.GPSLatitude,
-                        gpsLongitude: parsed.GPSLongitude
+                        dateTaken: parsed?.DateTimeOriginal,
+                        cameraMake: parsed?.Make,
+                        cameraModel: parsed?.Model,
+                        gpsLatitude,
+                        gpsLongitude,
                     };
                 }
             } catch (e) {

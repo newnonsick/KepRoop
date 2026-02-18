@@ -1056,6 +1056,92 @@
         }
       }
     },
+    "/api/map/date-range": {
+      "get": {
+        "tags": [
+          "Map"
+        ],
+        "summary": "Get photo date range",
+        "description": "Returns the min/max dates of geotagged photos the user has access to.",
+        "responses": {
+          "200": {
+            "description": "Date range boundaries"
+          }
+        }
+      }
+    },
+    "/api/map/points": {
+      "get": {
+        "tags": [
+          "Map"
+        ],
+        "summary": "Get photo map points",
+        "description": "Returns grouped photo points for the map viewport. Uses permission-first filtering and dynamic precision grouping based on zoom level.",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "minLat",
+            "required": true,
+            "schema": {
+              "type": "number"
+            }
+          },
+          {
+            "in": "query",
+            "name": "maxLat",
+            "required": true,
+            "schema": {
+              "type": "number"
+            }
+          },
+          {
+            "in": "query",
+            "name": "minLng",
+            "required": true,
+            "schema": {
+              "type": "number"
+            }
+          },
+          {
+            "in": "query",
+            "name": "maxLng",
+            "required": true,
+            "schema": {
+              "type": "number"
+            }
+          },
+          {
+            "in": "query",
+            "name": "zoom",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "since",
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          {
+            "in": "query",
+            "name": "until",
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Grouped photo points for the viewport"
+          }
+        }
+      }
+    },
     "/api/user/profile": {
       "patch": {
         "tags": [
