@@ -9,11 +9,30 @@ export interface MapPoint {
     thumbs: string[];  // signed thumbnail URLs (up to 3)
 }
 
+export interface SidebarPhoto {
+    id: string;
+    lat: number;
+    lng: number;
+    thumbUrl: string;
+    displayUrl: string;
+    dateTaken: string | null;
+    filename: string | null;
+    width: number;
+    height: number;
+    albumId: string;
+    albumTitle: string;
+}
+
 interface MapState {
-    // Data
+    // Map points data
     points: MapPoint[];
     isLoading: boolean;
     error: string | null;
+
+    // Sidebar photos data
+    sidebarPhotos: SidebarPhoto[];
+    sidebarLoading: boolean;
+    sidebarOpen: boolean;
 
     // Viewport
     zoom: number;
@@ -23,8 +42,9 @@ interface MapState {
     dateRange: { min: string | null; max: string | null };
     timeFilter: { since?: string; until?: string };
 
-    // Selected
+    // Selection (shared between map markers and sidebar)
     selectedPointId: string | null;
+    highlightedPhotoId: string | null;
 
     // Actions
     setPoints: (points: MapPoint[]) => void;
@@ -35,21 +55,28 @@ interface MapState {
     setDateRange: (range: MapState["dateRange"]) => void;
     setTimeFilter: (filter: MapState["timeFilter"]) => void;
     setSelectedPointId: (id: string | null) => void;
+    setHighlightedPhotoId: (id: string | null) => void;
+    setSidebarOpen: (open: boolean) => void;
 
     // Async
     fetchPoints: (abortSignal?: AbortSignal) => Promise<void>;
     fetchDateRange: () => Promise<void>;
+    fetchSidebarPhotos: (abortSignal?: AbortSignal) => Promise<void>;
 }
 
 export const useMapStore = create<MapState>((set, get) => ({
     points: [],
     isLoading: false,
     error: null,
+    sidebarPhotos: [],
+    sidebarLoading: false,
+    sidebarOpen: true,
     zoom: 3,
     bounds: null,
     dateRange: { min: null, max: null },
     timeFilter: {},
     selectedPointId: null,
+    highlightedPhotoId: null,
 
     setPoints: (points) => set({ points }),
     setLoading: (isLoading) => set({ isLoading }),
@@ -59,6 +86,8 @@ export const useMapStore = create<MapState>((set, get) => ({
     setDateRange: (dateRange) => set({ dateRange }),
     setTimeFilter: (timeFilter) => set({ timeFilter }),
     setSelectedPointId: (selectedPointId) => set({ selectedPointId }),
+    setHighlightedPhotoId: (highlightedPhotoId) => set({ highlightedPhotoId }),
+    setSidebarOpen: (sidebarOpen) => set({ sidebarOpen }),
 
     fetchPoints: async (abortSignal) => {
         const { bounds, zoom, timeFilter } = get();
@@ -87,7 +116,7 @@ export const useMapStore = create<MapState>((set, get) => ({
             const data = await res.json();
             set({ points: data.points, isLoading: false });
         } catch (err: any) {
-            if (err?.name === "AbortError") return; // Cancelled, don't update
+            if (err?.name === "AbortError") return;
             set({ error: err.message, isLoading: false });
         }
     },
@@ -100,6 +129,34 @@ export const useMapStore = create<MapState>((set, get) => ({
             set({ dateRange: data });
         } catch {
             // Non-critical, silently fail
+        }
+    },
+
+    fetchSidebarPhotos: async (abortSignal) => {
+        const { bounds } = get();
+        if (!bounds) return;
+
+        set({ sidebarLoading: true });
+
+        try {
+            const params = new URLSearchParams({
+                minLat: String(bounds.minLat),
+                maxLat: String(bounds.maxLat),
+                minLng: String(bounds.minLng),
+                maxLng: String(bounds.maxLng),
+            });
+
+            const res = await fetch(`/api/map/photos?${params}`, {
+                signal: abortSignal,
+            });
+
+            if (!res.ok) throw new Error("Failed to fetch sidebar photos");
+
+            const data = await res.json();
+            set({ sidebarPhotos: data.photos, sidebarLoading: false });
+        } catch (err: any) {
+            if (err?.name === "AbortError") return;
+            set({ sidebarLoading: false });
         }
     },
 }));

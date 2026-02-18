@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { useAuth } from "@/components/providers/AuthProvider";
 import { useMapStore, type MapPoint } from "@/stores/useMapStore";
 import { PhotoMarker } from "@/components/map/PhotoMarker";
+import { MapSidebar } from "@/components/map/MapSidebar";
 import { DashboardNavbar } from "@/components/DashboardNavbar";
 import "mapbox-gl/dist/mapbox-gl.css";
 
@@ -81,12 +82,14 @@ export default function PhotoMapPage() {
     const router = useRouter();
     const mapRef = useRef<MapRef>(null);
     const abortRef = useRef<AbortController | null>(null);
+    const sidebarAbortRef = useRef<AbortController | null>(null);
     const debounceRef = useRef<NodeJS.Timeout | null>(null);
 
     const {
-        points, isLoading, zoom, selectedPointId,
-        setZoom, setBounds, setSelectedPointId,
-        fetchPoints, fetchDateRange,
+        points, isLoading, zoom, selectedPointId, highlightedPhotoId,
+        sidebarOpen,
+        setZoom, setBounds, setSelectedPointId, setHighlightedPhotoId,
+        fetchPoints, fetchDateRange, fetchSidebarPhotos,
     } = useMapStore();
 
     const useWebGLFallback = points.length > MARKER_THRESHOLD;
@@ -95,21 +98,25 @@ export default function PhotoMapPage() {
     // Fetch date range on mount
     useEffect(() => { fetchDateRange(); }, []);
 
-    // Debounced fetch on viewport change
+    // Debounced fetch on viewport change — loads both markers and sidebar photos
     const debouncedFetch = useCallback(() => {
         if (debounceRef.current) clearTimeout(debounceRef.current);
         if (abortRef.current) abortRef.current.abort();
+        if (sidebarAbortRef.current) sidebarAbortRef.current.abort();
         debounceRef.current = setTimeout(() => {
             abortRef.current = new AbortController();
+            sidebarAbortRef.current = new AbortController();
             fetchPoints(abortRef.current.signal);
+            fetchSidebarPhotos(sidebarAbortRef.current.signal);
         }, 300);
-    }, [fetchPoints]);
+    }, [fetchPoints, fetchSidebarPhotos]);
 
     // Cleanup on unmount
     useEffect(() => {
         return () => {
             if (debounceRef.current) clearTimeout(debounceRef.current);
             if (abortRef.current) abortRef.current.abort();
+            if (sidebarAbortRef.current) sidebarAbortRef.current.abort();
         };
     }, []);
 
@@ -141,8 +148,10 @@ export default function PhotoMapPage() {
             });
         }
         abortRef.current = new AbortController();
+        sidebarAbortRef.current = new AbortController();
         fetchPoints(abortRef.current.signal);
-    }, [setBounds, fetchPoints]);
+        fetchSidebarPhotos(sidebarAbortRef.current.signal);
+    }, [setBounds, fetchPoints, fetchSidebarPhotos]);
 
     // Handle click on WebGL cluster -> zoom in
     const onClusterClick = useCallback((e: MapMouseEvent) => {
@@ -159,10 +168,16 @@ export default function PhotoMapPage() {
         });
     }, []);
 
-    // Handle marker click -> fly to and select
+    // Handle marker click -> fly to, select, and highlight in sidebar
     const handleMarkerClick = useCallback(
         (point: MapPoint) => {
             setSelectedPointId(point.id);
+            // Also highlight the first matching photo in the sidebar 
+            setHighlightedPhotoId(point.id);
+            // Open sidebar if collapsed
+            if (!useMapStore.getState().sidebarOpen) {
+                useMapStore.getState().setSidebarOpen(true);
+            }
             const map = mapRef.current?.getMap();
             if (map && zoom < 14) {
                 map.flyTo({
@@ -173,15 +188,30 @@ export default function PhotoMapPage() {
                 });
             }
         },
-        [setSelectedPointId, zoom]
+        [setSelectedPointId, setHighlightedPhotoId, zoom]
     );
+
+    // When a photo in sidebar is hovered, fly to and highlight its marker
+    useEffect(() => {
+        if (!highlightedPhotoId) return;
+        const photo = useMapStore.getState().sidebarPhotos.find(p => p.id === highlightedPhotoId);
+        if (photo) {
+            // Find matching map point to highlight
+            const match = points.find(p => {
+                // Check if the photo's lat/lng is close to the point's snapped location
+                return Math.abs(p.lat - photo.lat) < 0.01 && Math.abs(p.lng - photo.lng) < 0.01;
+            });
+            if (match) {
+                setSelectedPointId(match.id);
+            }
+        }
+    }, [highlightedPhotoId, points, setSelectedPointId]);
 
     // Click on empty map -> deselect
     const onMapClick = useCallback(
         (e: MapMouseEvent) => {
             const map = mapRef.current?.getMap();
             if (!map) return;
-            // In WebGL mode, check for features under click
             if (useWebGLFallback) {
                 const features = map.queryRenderedFeatures(e.point, {
                     layers: ["clusters", "unclustered-point"],
@@ -189,8 +219,9 @@ export default function PhotoMapPage() {
                 if (features.length > 0) return;
             }
             setSelectedPointId(null);
+            setHighlightedPhotoId(null);
         },
-        [setSelectedPointId, useWebGLFallback]
+        [setSelectedPointId, setHighlightedPhotoId, useWebGLFallback]
     );
 
     // Cursor styling for WebGL mode
@@ -229,13 +260,13 @@ export default function PhotoMapPage() {
         <div className="min-h-screen bg-slate-50 dark:bg-slate-950">
             <DashboardNavbar />
 
-            <div className="relative h-[calc(100vh-64px)]">
+            <div className="relative h-[calc(100vh-64px)] overflow-hidden">
                 {/* Back button */}
-                <div className="absolute top-4 left-4 z-10">
+                <div className="absolute top-4 left-4 z-20">
                     <Button
                         variant="outline"
                         onClick={() => router.push("/dashboard")}
-                        className="gap-2 bg-white/90 dark:bg-slate-800/90 backdrop-blur-md shadow-lg border-white/50 dark:border-slate-700 rounded-2xl h-11 px-4 hover:bg-white dark:hover:bg-slate-800 transition-all"
+                        className="gap-2 bg-white/90 dark:bg-slate-800/90 backdrop-blur-md shadow-lg border-white/50 dark:border-slate-700 rounded-2xl h-11 px-4 hover:bg-white dark:hover:bg-slate-800 transition-all dark:text-white/80"
                     >
                         <ArrowLeft className="h-4 w-4" />
                         Dashboard
@@ -244,7 +275,7 @@ export default function PhotoMapPage() {
 
                 {/* Loading indicator */}
                 {isLoading && (
-                    <div className="absolute top-4 left-1/2 -translate-x-1/2 z-10">
+                    <div className="absolute top-4 left-1/2 -translate-x-1/2 z-20">
                         <div className="flex items-center gap-2 bg-white/90 dark:bg-slate-800/90 backdrop-blur-md shadow-lg rounded-full px-4 py-2 border border-white/50 dark:border-slate-700">
                             <Loader2 className="h-4 w-4 text-blue-500 animate-spin" />
                             <span className="text-sm font-medium text-slate-600 dark:text-slate-300">Loading photos...</span>
@@ -253,13 +284,13 @@ export default function PhotoMapPage() {
                 )}
 
                 {/* Stats overlay */}
-                <div className="absolute bottom-6 left-4 z-10">
+                <div className="absolute bottom-6 left-4 z-20">
                     <div className="flex items-center gap-2 bg-white/90 dark:bg-slate-800/90 backdrop-blur-md shadow-lg rounded-2xl px-4 py-2.5 border border-white/50 dark:border-slate-700">
-                        <ImageIcon className="h-4 w-4 text-blue-500" />
+                        <ImageIcon className="h-4 w-4 text-blue-500 dark:text-blue-400" />
                         <span className="text-sm font-semibold text-slate-700 dark:text-slate-200">
                             {points.reduce((sum, p) => sum + p.c, 0).toLocaleString()} photos
                         </span>
-                        <span className="text-xs text-slate-400 dark:text-slate-500 ml-1">
+                        <span className="text-xs text-slate-400 dark:text-white/80 ml-1">
                             in {points.length} locations
                         </span>
                     </div>
@@ -319,6 +350,9 @@ export default function PhotoMapPage() {
                         ))
                     }
                 </Map>
+
+                {/* Sidebar panel */}
+                <MapSidebar />
             </div>
         </div>
     );

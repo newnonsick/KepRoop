@@ -129,4 +129,60 @@ export class MapService {
             max: row?.max_date ? new Date(row.max_date).toISOString() : null,
         };
     }
+
+    /**
+     * Get individual photos in the viewport for the sidebar panel.
+     * Returns up to 60 photos with album info and S3 keys for display URLs.
+     * Uses Permission-First JOIN, sorted by newest first.
+     */
+    static async getPhotosInViewport(params: {
+        userId: string;
+        minLat: number;
+        maxLat: number;
+        minLng: number;
+        maxLng: number;
+    }): Promise<any[]> {
+        const { userId, minLat, maxLat, minLng, maxLng } = params;
+
+        const result = await db.execute(sql`
+            SELECT 
+                i.id,
+                i.gps_lat as lat,
+                i.gps_lng as lng,
+                i.s3_key_thumb,
+                i.s3_key_display,
+                i.date_taken,
+                i.original_filename,
+                i.width,
+                i.height,
+                i.album_id,
+                a.title as album_title
+            FROM album_members am
+            JOIN images i ON am.album_id = i.album_id
+            JOIN albums a ON a.id = i.album_id
+            WHERE 
+                am.user_id = ${userId}
+                AND i.gps_lat IS NOT NULL
+                AND i.gps_lng IS NOT NULL
+                AND i.gps_lat BETWEEN ${minLat} AND ${maxLat}
+                AND i.gps_lng BETWEEN ${minLng} AND ${maxLng}
+                AND i.deleted_at IS NULL
+            ORDER BY i.date_taken DESC NULLS LAST
+            LIMIT 60
+        `);
+
+        return (result.rows as any[]).map(row => ({
+            id: row.id,
+            lat: Number(row.lat),
+            lng: Number(row.lng),
+            thumbKey: row.s3_key_thumb || row.s3_key_display,
+            displayKey: row.s3_key_display || row.s3_key_thumb,
+            dateTaken: row.date_taken ? new Date(row.date_taken).toISOString() : null,
+            filename: row.original_filename,
+            width: row.width,
+            height: row.height,
+            albumId: row.album_id,
+            albumTitle: row.album_title,
+        }));
+    }
 }
