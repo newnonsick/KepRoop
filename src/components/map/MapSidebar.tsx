@@ -10,8 +10,10 @@ import { useMapStore, type SidebarPhoto } from "@/stores/useMapStore";
  * Features:
  * - Smooth slide-in/out animation
  * - Photo preview cards with album deep-links
- * - Auto-scroll to highlighted photo when marker is clicked
+ * - Click a photo → map flies to it + marker highlights
+ * - Map marker click → sidebar scrolls to matching photo
  * - Dark mode support
+ * - Only scrolls via explicit user input (wheel/touch), no hover-scroll
  */
 export function MapSidebar() {
     const {
@@ -19,22 +21,33 @@ export function MapSidebar() {
         sidebarLoading: loading,
         sidebarOpen: isOpen,
         highlightedPhotoId,
+        highlightSource,
         setSidebarOpen,
         setHighlightedPhotoId,
     } = useMapStore();
 
     const scrollRef = useRef<HTMLDivElement>(null);
 
-    // Auto-scroll to highlighted photo when a map marker is clicked
+    // Auto-scroll sidebar ONLY when highlight comes from the map (marker click)
+    // Never scroll when highlight comes from sidebar click (user is already looking at it)
     useEffect(() => {
-        if (!highlightedPhotoId || !scrollRef.current) return;
-        const el = scrollRef.current.querySelector(`[data-photo-id="${highlightedPhotoId}"]`);
-        if (el) {
-            el.scrollIntoView({ behavior: "smooth", block: "center" });
-        }
-    }, [highlightedPhotoId]);
+        if (!highlightedPhotoId || highlightSource !== "map" || !scrollRef.current) return;
+        // Small delay to ensure the DOM has rendered
+        const timeout = setTimeout(() => {
+            const el = scrollRef.current?.querySelector(`[data-photo-id="${highlightedPhotoId}"]`);
+            if (el) {
+                el.scrollIntoView({ behavior: "smooth", block: "center" });
+            }
+        }, 100);
+        return () => clearTimeout(timeout);
+    }, [highlightedPhotoId, highlightSource]);
 
     const toggleSidebar = useCallback(() => setSidebarOpen(!isOpen), [isOpen, setSidebarOpen]);
+
+    // Handle photo click in sidebar → fly map to location
+    const handlePhotoClick = useCallback((photo: SidebarPhoto) => {
+        setHighlightedPhotoId(photo.id, "sidebar");
+    }, [setHighlightedPhotoId]);
 
     return (
         <>
@@ -79,7 +92,7 @@ export function MapSidebar() {
                     </div>
                 </div>
 
-                {/* Photo list */}
+                {/* Photo list — only scrolls via user input (wheel / touch) */}
                 <div
                     ref={scrollRef}
                     className="flex-1 overflow-y-auto overscroll-contain"
@@ -112,7 +125,7 @@ export function MapSidebar() {
                                 key={photo.id}
                                 photo={photo}
                                 isHighlighted={highlightedPhotoId === photo.id}
-                                onHover={setHighlightedPhotoId}
+                                onClick={handlePhotoClick}
                             />
                         ))}
                     </div>
@@ -124,16 +137,17 @@ export function MapSidebar() {
 
 /**
  * Individual photo card in the sidebar.
- * Shows the photo preview, date, album link, and highlights when its marker is selected.
+ * Click to fly the map to this photo's location and highlight its marker.
+ * No hover-based auto-scroll — only explicit click interaction.
  */
 const PhotoCard = memo(function PhotoCard({
     photo,
     isHighlighted,
-    onHover,
+    onClick,
 }: {
     photo: SidebarPhoto;
     isHighlighted: boolean;
-    onHover: (id: string | null) => void;
+    onClick: (photo: SidebarPhoto) => void;
 }) {
     const formattedDate = photo.dateTaken
         ? new Date(photo.dateTaken).toLocaleDateString("en-US", {
@@ -154,8 +168,7 @@ const PhotoCard = memo(function PhotoCard({
                 }
                 bg-white dark:bg-slate-800/80
             `}
-            onMouseEnter={() => onHover(photo.id)}
-            onMouseLeave={() => onHover(null)}
+            onClick={() => onClick(photo)}
         >
             {/* Photo preview — aspect-ratio preserved */}
             <div className="relative w-full" style={{ aspectRatio: Math.max(photo.width / photo.height, 0.75).toString() }}>

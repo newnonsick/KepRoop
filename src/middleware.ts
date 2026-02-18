@@ -4,7 +4,7 @@ import type { NextRequest } from "next/server";
 import { verifyAccessToken } from "@/lib/auth/tokens";
 
 // Routes that always require authentication
-const PROTECTED_PATHS = ["/dashboard"];
+const PROTECTED_PATHS = ["/dashboard", "/map"];
 
 // API routes that require authentication
 const PROTECTED_API_PATHS: string[] = [];

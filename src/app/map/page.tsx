@@ -84,6 +84,7 @@ export default function PhotoMapPage() {
     const abortRef = useRef<AbortController | null>(null);
     const sidebarAbortRef = useRef<AbortController | null>(null);
     const debounceRef = useRef<NodeJS.Timeout | null>(null);
+    const lastHighlightRef = useRef<string | null>(null);  // guards against re-processing same photo
 
     const {
         points, isLoading, zoom, selectedPointId, highlightedPhotoId,
@@ -168,12 +169,12 @@ export default function PhotoMapPage() {
         });
     }, []);
 
-    // Handle marker click -> fly to, select, and highlight in sidebar
+    // Handle marker click -> fly to, select, and highlight in sidebar (source: map)
     const handleMarkerClick = useCallback(
         (point: MapPoint) => {
             setSelectedPointId(point.id);
-            // Also highlight the first matching photo in the sidebar 
-            setHighlightedPhotoId(point.id);
+            // Highlight in sidebar with source="map" so sidebar auto-scrolls to it
+            setHighlightedPhotoId(point.id, "map");
             // Open sidebar if collapsed
             if (!useMapStore.getState().sidebarOpen) {
                 useMapStore.getState().setSidebarOpen(true);
@@ -191,23 +192,42 @@ export default function PhotoMapPage() {
         [setSelectedPointId, setHighlightedPhotoId, zoom]
     );
 
-    // When a photo in sidebar is hovered, fly to and highlight its marker
+    // When a sidebar photo is CLICKED (source: "sidebar"), fly the map to it and highlight the marker.
+    // Uses a ref guard to ensure each photo ID is processed ONCE — prevents the infinite loop
+    // caused by: click → flyTo → onMoveEnd → fetch → points update → effect re-fires → flyTo again.
     useEffect(() => {
-        if (!highlightedPhotoId) return;
-        const photo = useMapStore.getState().sidebarPhotos.find(p => p.id === highlightedPhotoId);
-        if (photo) {
-            // Find matching map point to highlight
-            const match = points.find(p => {
-                // Check if the photo's lat/lng is close to the point's snapped location
-                return Math.abs(p.lat - photo.lat) < 0.01 && Math.abs(p.lng - photo.lng) < 0.01;
-            });
-            if (match) {
-                setSelectedPointId(match.id);
-            }
-        }
-    }, [highlightedPhotoId, points, setSelectedPointId]);
+        const { highlightSource } = useMapStore.getState();
+        if (!highlightedPhotoId || highlightSource !== "sidebar") return;
+        // Guard: skip if we already processed this exact photo ID
+        if (lastHighlightRef.current === highlightedPhotoId) return;
+        lastHighlightRef.current = highlightedPhotoId;
 
-    // Click on empty map -> deselect
+        const photo = useMapStore.getState().sidebarPhotos.find(p => p.id === highlightedPhotoId);
+        if (!photo) return;
+
+        // Find matching map point to highlight its marker (use getState to avoid reactive dep)
+        const currentPoints = useMapStore.getState().points;
+        const match = currentPoints.find(p =>
+            Math.abs(p.lat - photo.lat) < 0.01 && Math.abs(p.lng - photo.lng) < 0.01
+        );
+        if (match) {
+            setSelectedPointId(match.id);
+        }
+
+        // Fly the map to the photo location
+        const map = mapRef.current?.getMap();
+        const currentZoom = useMapStore.getState().zoom;
+        if (map) {
+            map.flyTo({
+                center: [photo.lng, photo.lat],
+                zoom: Math.max(currentZoom, 14),
+                duration: 800,
+                essential: true,
+            });
+        }
+    }, [highlightedPhotoId, setSelectedPointId]);  // NO points/zoom deps — read from store
+
+    // Click on empty map -> deselect both
     const onMapClick = useCallback(
         (e: MapMouseEvent) => {
             const map = mapRef.current?.getMap();
@@ -220,6 +240,7 @@ export default function PhotoMapPage() {
             }
             setSelectedPointId(null);
             setHighlightedPhotoId(null);
+            lastHighlightRef.current = null;  // reset guard on deselect
         },
         [setSelectedPointId, setHighlightedPhotoId, useWebGLFallback]
     );

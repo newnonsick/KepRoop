@@ -45,6 +45,7 @@ interface MapState {
     // Selection (shared between map markers and sidebar)
     selectedPointId: string | null;
     highlightedPhotoId: string | null;
+    highlightSource: "map" | "sidebar" | null;  // tracks who set the highlight
 
     // Actions
     setPoints: (points: MapPoint[]) => void;
@@ -55,7 +56,7 @@ interface MapState {
     setDateRange: (range: MapState["dateRange"]) => void;
     setTimeFilter: (filter: MapState["timeFilter"]) => void;
     setSelectedPointId: (id: string | null) => void;
-    setHighlightedPhotoId: (id: string | null) => void;
+    setHighlightedPhotoId: (id: string | null, source?: "map" | "sidebar") => void;
     setSidebarOpen: (open: boolean) => void;
 
     // Async
@@ -77,6 +78,7 @@ export const useMapStore = create<MapState>((set, get) => ({
     timeFilter: {},
     selectedPointId: null,
     highlightedPhotoId: null,
+    highlightSource: null,
 
     setPoints: (points) => set({ points }),
     setLoading: (isLoading) => set({ isLoading }),
@@ -86,7 +88,7 @@ export const useMapStore = create<MapState>((set, get) => ({
     setDateRange: (dateRange) => set({ dateRange }),
     setTimeFilter: (timeFilter) => set({ timeFilter }),
     setSelectedPointId: (selectedPointId) => set({ selectedPointId }),
-    setHighlightedPhotoId: (highlightedPhotoId) => set({ highlightedPhotoId }),
+    setHighlightedPhotoId: (highlightedPhotoId, source) => set({ highlightedPhotoId, highlightSource: source || null }),
     setSidebarOpen: (sidebarOpen) => set({ sidebarOpen }),
 
     fetchPoints: async (abortSignal) => {
