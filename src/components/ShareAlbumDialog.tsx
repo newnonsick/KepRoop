@@ -352,20 +352,20 @@ export function ShareAlbumDialog({ albumId, albumTitle, albumVisibility = "priva
                                                     <DropdownMenuContent align="end" className="rounded-xl border-slate-100 dark:border-slate-700 dark:bg-slate-800 shadow-lg min-w-32">
                                                         <DropdownMenuItem
                                                             onClick={() => updateMemberRole(member.userId, "viewer")}
-                                                            className={cn("rounded-lg text-sm dark:text-slate-200", member.role === "viewer" && "bg-slate-50 dark:bg-slate-700 font-medium text-blue-600 dark:text-blue-400")}
+                                                            className={cn("rounded-lg text-sm dark:text-slate-200 focus:bg-slate-50 dark:focus:bg-slate-800", member.role === "viewer" && "bg-slate-50 dark:bg-slate-700 font-medium text-blue-600 dark:text-blue-400")}
                                                         >
                                                             Viewer
                                                         </DropdownMenuItem>
                                                         <DropdownMenuItem
                                                             onClick={() => updateMemberRole(member.userId, "editor")}
-                                                            className={cn("rounded-lg text-sm dark:text-slate-200", member.role === "editor" && "bg-slate-50 dark:bg-slate-700 font-medium text-blue-600 dark:text-blue-400")}
+                                                            className={cn("rounded-lg text-sm dark:text-slate-200 focus:bg-slate-50 dark:focus:bg-slate-800", member.role === "editor" && "bg-slate-50 dark:bg-slate-700 font-medium text-blue-600 dark:text-blue-400")}
                                                         >
                                                             Editor
                                                         </DropdownMenuItem>
 
                                                         <DropdownMenuItem
                                                             onClick={() => updateMemberRole(member.userId, "owner")}
-                                                            className="rounded-lg text-sm dark:text-slate-200"
+                                                            className="rounded-lg text-sm dark:text-slate-200 focus:bg-slate-50 dark:focus:bg-slate-800"
                                                         >
                                                             Joint Owner
                                                         </DropdownMenuItem>
@@ -394,13 +394,13 @@ export function ShareAlbumDialog({ albumId, albumTitle, albumVisibility = "priva
                                                     <DropdownMenuContent align="end" className="rounded-xl border-slate-100 dark:border-slate-700 dark:bg-slate-800 shadow-lg min-w-32">
                                                         <DropdownMenuItem
                                                             onClick={() => updateMemberRole(member.userId, "editor")}
-                                                            className="rounded-lg text-sm dark:text-slate-200"
+                                                            className="rounded-lg text-sm dark:text-slate-200 focus:bg-slate-50 dark:focus:bg-slate-800"
                                                         >
                                                             Demote to Editor
                                                         </DropdownMenuItem>
                                                         <DropdownMenuItem
                                                             onClick={() => updateMemberRole(member.userId, "viewer")}
-                                                            className="rounded-lg text-sm dark:text-slate-200"
+                                                            className="rounded-lg text-sm dark:text-slate-200 focus:bg-slate-50 dark:focus:bg-slate-800"
                                                         >
                                                             Demote to Viewer
                                                         </DropdownMenuItem>
