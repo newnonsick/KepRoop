@@ -1016,48 +1016,6 @@
         }
       }
     },
-    "/api/images": {
-      "post": {
-        "tags": [
-          "Images"
-        ],
-        "summary": "Confirm upload",
-        "description": "Manually confirm an image upload.",
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "required": [
-                  "albumId",
-                  "s3Key"
-                ],
-                "properties": {
-                  "albumId": {
-                    "type": "string"
-                  },
-                  "s3Key": {
-                    "type": "string"
-                  },
-                  "mimeType": {
-                    "type": "string"
-                  },
-                  "size": {
-                    "type": "integer"
-                  }
-                }
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "Image confirmed"
-          }
-        }
-      }
-    },
     "/api/images/upload-url": {
       "post": {
         "tags": [
@@ -1094,45 +1052,6 @@
         "responses": {
           "200": {
             "description": "Presigned URLs generated"
-          }
-        }
-      }
-    },
-    "/api/images/upload": {
-      "post": {
-        "tags": [
-          "Images"
-        ],
-        "summary": "Upload image (Server-side)",
-        "description": "Upload an image file directly to the server.",
-        "requestBody": {
-          "content": {
-            "multipart/form-data": {
-              "schema": {
-                "type": "object",
-                "required": [
-                  "file",
-                  "albumId"
-                ],
-                "properties": {
-                  "file": {
-                    "type": "string",
-                    "format": "binary"
-                  },
-                  "albumId": {
-                    "type": "string"
-                  },
-                  "folderId": {
-                    "type": "string"
-                  }
-                }
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "Image uploaded and processed"
           }
         }
       }
