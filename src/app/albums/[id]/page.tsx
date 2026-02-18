@@ -345,14 +345,36 @@ export default function AlbumDetailPage({ params }: { params: Promise<{ id: stri
             // 2. Resize Images (Client-side)
             const { resizeImage } = await import("@/lib/client-image");
 
-            // Original (Keep original type, Quality 95%, Original Size)
+            // Helper to get dimensions
+            const getOriginalDims = (f: File): Promise<{ width: number, height: number }> => {
+                return new Promise((resolve) => {
+                    const img = new Image();
+                    img.onload = () => {
+                        resolve({ width: img.width, height: img.height });
+                        URL.revokeObjectURL(img.src);
+                    };
+                    img.onerror = () => {
+                        resolve({ width: 0, height: 0 });
+                        URL.revokeObjectURL(img.src);
+                    }
+                    img.src = URL.createObjectURL(f);
+                });
+            };
+
+            // Original: Keep as is
             // Display (2000px, 90% quality - WebP)
             // Thumb (400px, 70% quality - WebP)
-            const [originalVariant, displayVariant, thumbVariant] = await Promise.all([
-                resizeImage(file, 0, 0.95, file.type),
+            const [originalDims, displayVariant, thumbVariant] = await Promise.all([
+                getOriginalDims(file),
                 resizeImage(file, 2000, 0.90),
                 resizeImage(file, 400, 0.70)
             ]);
+
+            const originalVariant = {
+                blob: file,
+                width: originalDims.width,
+                height: originalDims.height
+            };
 
             updateProgress(20);
 
@@ -530,11 +552,34 @@ export default function AlbumDetailPage({ params }: { params: Promise<{ id: stri
         try {
             // 1. Resize images (client-side) — same as regular upload
             const { resizeImage } = await import("@/lib/client-image");
-            const [originalVariant, displayVariant, thumbVariant] = await Promise.all([
-                resizeImage(file, 0, 0.95, file.type),
+
+            // Helper to get dimensions
+            const getOriginalDims = (f: File): Promise<{ width: number, height: number }> => {
+                return new Promise((resolve) => {
+                    const img = new Image();
+                    img.onload = () => {
+                        resolve({ width: img.width, height: img.height });
+                        URL.revokeObjectURL(img.src);
+                    };
+                    img.onerror = () => {
+                        resolve({ width: 0, height: 0 });
+                        URL.revokeObjectURL(img.src);
+                    }
+                    img.src = URL.createObjectURL(f);
+                });
+            };
+
+            const [originalDims, displayVariant, thumbVariant] = await Promise.all([
+                getOriginalDims(file),
                 resizeImage(file, 2000, 0.90),
                 resizeImage(file, 400, 0.70)
             ]);
+
+            const originalVariant = {
+                blob: file,
+                width: originalDims.width,
+                height: originalDims.height
+            };
 
             // 2. Get presigned URLs
             const urlRes = await fetch("/api/images/upload-url", {
