@@ -220,7 +220,7 @@ export default function PhotoMapPage() {
         if (map) {
             map.flyTo({
                 center: [photo.lng, photo.lat],
-                zoom: Math.max(currentZoom, 14),
+                zoom: Math.max(currentZoom, 18),
                 duration: 800,
                 essential: true,
             });
