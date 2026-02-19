@@ -36,6 +36,13 @@
       "when": 1771444973940,
       "tag": "0004_photo_map_geo_columns",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1771527696000,
+      "tag": "0005_drop_gps_text_columns",
+      "breakpoints": true
     }
   ]
 }

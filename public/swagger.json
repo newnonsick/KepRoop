@@ -1003,6 +1003,29 @@
                   },
                   "folderId": {
                     "type": "string"
+                  },
+                  "exif": {
+                    "type": "object",
+                    "properties": {
+                      "dateTaken": {
+                        "type": "string",
+                        "format": "date-time"
+                      },
+                      "cameraMake": {
+                        "type": "string"
+                      },
+                      "cameraModel": {
+                        "type": "string"
+                      },
+                      "gpsLatitude": {
+                        "type": "number",
+                        "description": "Decimal latitude (-90 to 90)"
+                      },
+                      "gpsLongitude": {
+                        "type": "number",
+                        "description": "Decimal longitude (-180 to 180)"
+                      }
+                    }
                   }
                 }
               }

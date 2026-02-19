@@ -93,8 +93,6 @@ export const images = pgTable("images", {
     dateTaken: timestamp("date_taken"),
     cameraMake: text("camera_make"),
     cameraModel: text("camera_model"),
-    gpsLatitude: text("gps_latitude"),
-    gpsLongitude: text("gps_longitude"),
 
     // Numeric GPS for Photo Map (high-performance spatial queries)
     gpsLat: doublePrecision("gps_lat"),

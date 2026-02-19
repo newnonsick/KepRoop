@@ -39,6 +39,22 @@ import { checkRateLimits, logApiKeyUsage } from "@/lib/api-middleware";
  *                 type: integer
  *               folderId:
  *                 type: string
+ *               exif:
+ *                 type: object
+ *                 properties:
+ *                   dateTaken:
+ *                     type: string
+ *                     format: date-time
+ *                   cameraMake:
+ *                     type: string
+ *                   cameraModel:
+ *                     type: string
+ *                   gpsLatitude:
+ *                     type: number
+ *                     description: Decimal latitude (-90 to 90)
+ *                   gpsLongitude:
+ *                     type: number
+ *                     description: Decimal longitude (-180 to 180)
  *     responses:
  *       200:
  *         description: Image registered
@@ -126,9 +142,6 @@ export async function POST(request: Request) {
             dateTaken: exif?.dateTaken ? new Date(exif.dateTaken) : null,
             cameraMake: exif?.cameraMake || null,
             cameraModel: exif?.cameraModel || null,
-            gpsLatitude: exif?.gpsLatitude?.toString() || null,
-            gpsLongitude: exif?.gpsLongitude?.toString() || null,
-            // Numeric GPS for Photo Map queries
             gpsLat,
             gpsLng,
         }).returning();
