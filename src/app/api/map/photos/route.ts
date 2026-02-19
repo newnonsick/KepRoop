@@ -57,25 +57,26 @@ export async function GET(request: NextRequest) {
         const maxLat = Number(searchParams.get("maxLat"));
         const minLng = Number(searchParams.get("minLng"));
         const maxLng = Number(searchParams.get("maxLng"));
+        const offset = Math.max(0, Number(searchParams.get("offset") || 0));
 
         if ([minLat, maxLat, minLng, maxLng].some(v => !isFinite(v))) {
             return NextResponse.json({ error: "Invalid bounds" }, { status: 400 });
         }
 
-        const photos = await MapService.getPhotosInViewport({
-            userId, minLat, maxLat, minLng, maxLng,
+        const { photos, total } = await MapService.getPhotosInViewport({
+            userId, minLat, maxLat, minLng, maxLng, offset,
         });
 
         // Generate signed URLs (deduplicated)
         const urlMap = new Map<string, string>();
-        const allKeys = photos.flatMap(p => [p.thumbKey, p.displayKey]).filter(Boolean);
+        const allKeys = photos.flatMap((p: any) => [p.thumbKey, p.displayKey]).filter(Boolean);
         await Promise.all(
-            [...new Set(allKeys)].map(async key => {
+            [...new Set(allKeys)].map(async (key: string) => {
                 urlMap.set(key, await generateDownloadUrl(key));
             })
         );
 
-        const responsePhotos = photos.map(p => ({
+        const responsePhotos = photos.map((p: any) => ({
             id: p.id,
             lat: p.lat,
             lng: p.lng,
@@ -93,7 +94,7 @@ export async function GET(request: NextRequest) {
             await logApiKeyUsage(apiKey.id, request, 200);
         }
 
-        const response = NextResponse.json({ photos: responsePhotos });
+        const response = NextResponse.json({ photos: responsePhotos, total });
         response.headers.set("Cache-Control", "private, max-age=30");
         return response;
     } catch (error) {

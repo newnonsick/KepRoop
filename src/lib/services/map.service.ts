@@ -132,8 +132,8 @@ export class MapService {
 
     /**
      * Get individual photos in the viewport for the sidebar panel.
-     * Returns up to 60 photos with album info and S3 keys for display URLs.
-     * Uses Permission-First JOIN, sorted by newest first.
+     * Supports pagination via offset/limit for infinite scroll.
+     * Returns photos + total count so the frontend can show "X photos" and load more.
      */
     static async getPhotosInViewport(params: {
         userId: string;
@@ -141,37 +141,57 @@ export class MapService {
         maxLat: number;
         minLng: number;
         maxLng: number;
-    }): Promise<any[]> {
-        const { userId, minLat, maxLat, minLng, maxLng } = params;
+        offset?: number;
+        limit?: number;
+    }): Promise<{ photos: any[]; total: number }> {
+        const { userId, minLat, maxLat, minLng, maxLng, offset = 0, limit = 20 } = params;
 
-        const result = await db.execute(sql`
-            SELECT 
-                i.id,
-                i.gps_lat as lat,
-                i.gps_lng as lng,
-                i.s3_key_thumb,
-                i.s3_key_display,
-                i.date_taken,
-                i.original_filename,
-                i.width,
-                i.height,
-                i.album_id,
-                a.title as album_title
-            FROM album_members am
-            JOIN images i ON am.album_id = i.album_id
-            JOIN albums a ON a.id = i.album_id
-            WHERE 
-                am.user_id = ${userId}
-                AND i.gps_lat IS NOT NULL
-                AND i.gps_lng IS NOT NULL
-                AND i.gps_lat BETWEEN ${minLat} AND ${maxLat}
-                AND i.gps_lng BETWEEN ${minLng} AND ${maxLng}
-                AND i.deleted_at IS NULL
-            ORDER BY i.date_taken DESC NULLS LAST
-            LIMIT 60
-        `);
+        // Run photos query and count query in parallel
+        const [photosResult, countResult] = await Promise.all([
+            db.execute(sql`
+                SELECT 
+                    i.id,
+                    i.gps_lat as lat,
+                    i.gps_lng as lng,
+                    i.s3_key_thumb,
+                    i.s3_key_display,
+                    i.date_taken,
+                    i.original_filename,
+                    i.width,
+                    i.height,
+                    i.album_id,
+                    a.title as album_title
+                FROM album_members am
+                JOIN images i ON am.album_id = i.album_id
+                JOIN albums a ON a.id = i.album_id
+                WHERE 
+                    am.user_id = ${userId}
+                    AND i.gps_lat IS NOT NULL
+                    AND i.gps_lng IS NOT NULL
+                    AND i.gps_lat BETWEEN ${minLat} AND ${maxLat}
+                    AND i.gps_lng BETWEEN ${minLng} AND ${maxLng}
+                    AND i.deleted_at IS NULL
+                ORDER BY i.date_taken DESC NULLS LAST
+                LIMIT ${limit}
+                OFFSET ${offset}
+            `),
+            db.execute(sql`
+                SELECT COUNT(*)::int as total
+                FROM album_members am
+                JOIN images i ON am.album_id = i.album_id
+                WHERE 
+                    am.user_id = ${userId}
+                    AND i.gps_lat IS NOT NULL
+                    AND i.gps_lng IS NOT NULL
+                    AND i.gps_lat BETWEEN ${minLat} AND ${maxLat}
+                    AND i.gps_lng BETWEEN ${minLng} AND ${maxLng}
+                    AND i.deleted_at IS NULL
+            `),
+        ]);
 
-        return (result.rows as any[]).map(row => ({
+        const total = Number((countResult.rows as any[])[0]?.total ?? 0);
+
+        const photos = (photosResult.rows as any[]).map(row => ({
             id: row.id,
             lat: Number(row.lat),
             lng: Number(row.lng),
@@ -184,5 +204,7 @@ export class MapService {
             albumId: row.album_id,
             albumTitle: row.album_title,
         }));
+
+        return { photos, total };
     }
 }

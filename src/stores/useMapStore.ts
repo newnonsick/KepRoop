@@ -23,15 +23,19 @@ export interface SidebarPhoto {
     albumTitle: string;
 }
 
+const PAGE_SIZE = 20;
+
 interface MapState {
     // Map points data
     points: MapPoint[];
     isLoading: boolean;
     error: string | null;
 
-    // Sidebar photos data
+    // Sidebar photos data (paginated)
     sidebarPhotos: SidebarPhoto[];
+    sidebarTotal: number;
     sidebarLoading: boolean;
+    sidebarLoadingMore: boolean;
     sidebarOpen: boolean;
 
     // Viewport
@@ -45,7 +49,7 @@ interface MapState {
     // Selection (shared between map markers and sidebar)
     selectedPointId: string | null;
     highlightedPhotoId: string | null;
-    highlightSource: "map" | "sidebar" | null;  // tracks who set the highlight
+    highlightSource: "map" | "sidebar" | null;
 
     // Actions
     setPoints: (points: MapPoint[]) => void;
@@ -63,6 +67,7 @@ interface MapState {
     fetchPoints: (abortSignal?: AbortSignal) => Promise<void>;
     fetchDateRange: () => Promise<void>;
     fetchSidebarPhotos: (abortSignal?: AbortSignal) => Promise<void>;
+    fetchMoreSidebarPhotos: () => Promise<void>;
 }
 
 export const useMapStore = create<MapState>((set, get) => ({
@@ -70,7 +75,9 @@ export const useMapStore = create<MapState>((set, get) => ({
     isLoading: false,
     error: null,
     sidebarPhotos: [],
+    sidebarTotal: 0,
     sidebarLoading: false,
+    sidebarLoadingMore: false,
     sidebarOpen: true,
     zoom: 3,
     bounds: null,
@@ -134,11 +141,12 @@ export const useMapStore = create<MapState>((set, get) => ({
         }
     },
 
+    // Fetch first page of sidebar photos (called on viewport change)
     fetchSidebarPhotos: async (abortSignal) => {
         const { bounds } = get();
         if (!bounds) return;
 
-        set({ sidebarLoading: true });
+        set({ sidebarLoading: true, sidebarPhotos: [], sidebarTotal: 0 });
 
         try {
             const params = new URLSearchParams({
@@ -146,6 +154,7 @@ export const useMapStore = create<MapState>((set, get) => ({
                 maxLat: String(bounds.maxLat),
                 minLng: String(bounds.minLng),
                 maxLng: String(bounds.maxLng),
+                offset: "0",
             });
 
             const res = await fetch(`/api/map/photos?${params}`, {
@@ -155,10 +164,45 @@ export const useMapStore = create<MapState>((set, get) => ({
             if (!res.ok) throw new Error("Failed to fetch sidebar photos");
 
             const data = await res.json();
-            set({ sidebarPhotos: data.photos, sidebarLoading: false });
+            set({
+                sidebarPhotos: data.photos,
+                sidebarTotal: data.total,
+                sidebarLoading: false,
+            });
         } catch (err: any) {
             if (err?.name === "AbortError") return;
             set({ sidebarLoading: false });
+        }
+    },
+
+    // Load next page — appends to existing photos
+    fetchMoreSidebarPhotos: async () => {
+        const { bounds, sidebarPhotos, sidebarTotal, sidebarLoadingMore } = get();
+        if (!bounds || sidebarLoadingMore) return;
+        if (sidebarPhotos.length >= sidebarTotal) return; // nothing left
+
+        set({ sidebarLoadingMore: true });
+
+        try {
+            const params = new URLSearchParams({
+                minLat: String(bounds.minLat),
+                maxLat: String(bounds.maxLat),
+                minLng: String(bounds.minLng),
+                maxLng: String(bounds.maxLng),
+                offset: String(sidebarPhotos.length),
+            });
+
+            const res = await fetch(`/api/map/photos?${params}`);
+            if (!res.ok) throw new Error("Failed to load more photos");
+
+            const data = await res.json();
+            set({
+                sidebarPhotos: [...sidebarPhotos, ...data.photos],
+                sidebarTotal: data.total, // refresh total in case viewport changed
+                sidebarLoadingMore: false,
+            });
+        } catch {
+            set({ sidebarLoadingMore: false });
         }
     },
 }));
