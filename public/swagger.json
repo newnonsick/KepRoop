@@ -1070,6 +1070,54 @@
         }
       }
     },
+    "/api/map/photos": {
+      "get": {
+        "tags": [
+          "Map"
+        ],
+        "summary": "Get photo map points",
+        "description": "Returns individual photos in the viewport for the sidebar panel. Each photo includes a display-quality signed URL and album deep-link info.",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "minLat",
+            "required": true,
+            "schema": {
+              "type": "number"
+            }
+          },
+          {
+            "in": "query",
+            "name": "maxLat",
+            "required": true,
+            "schema": {
+              "type": "number"
+            }
+          },
+          {
+            "in": "query",
+            "name": "minLng",
+            "required": true,
+            "schema": {
+              "type": "number"
+            }
+          },
+          {
+            "in": "query",
+            "name": "maxLng",
+            "required": true,
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Individual photos in the viewport"
+          }
+        }
+      }
+    },
     "/api/map/points": {
       "get": {
         "tags": [

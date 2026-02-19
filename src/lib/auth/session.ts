@@ -33,7 +33,7 @@ export async function getAuthContext(): Promise<AuthContext> {
     const token = cookieStore.get("accessToken")?.value;
     if (token) {
         const payload = await verifyAccessToken(token);
-        if (payload?.userId) return { userId: payload.userId };
+        if (payload?.userId) return { userId: payload.userId, apiKey: null };
     }
 
     // 2. Check Authorization Header (API Key)
@@ -65,5 +65,5 @@ export async function getAuthContext(): Promise<AuthContext> {
         }
     }
 
-    return { userId: null };
+    return { userId: null, apiKey: null };
 }

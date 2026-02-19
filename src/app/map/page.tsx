@@ -281,37 +281,44 @@ export default function PhotoMapPage() {
         <div className="min-h-screen bg-slate-50 dark:bg-slate-950">
             <DashboardNavbar />
 
+            {/* CSS variables for responsive sidebar width */}
+            <style>{`
+                :root { --sidebar-width: 380px; }
+                @media (max-width: 1023px) { :root { --sidebar-width: 320px; } }
+                @media (max-width: 767px)  { :root { --sidebar-width: 0px; } }
+            `}</style>
+
             <div className="relative h-[calc(100vh-64px)] overflow-hidden">
-                {/* Back button */}
-                <div className="absolute top-4 left-4 z-20">
+                {/* Back button — icon-only on mobile */}
+                <div className="absolute top-3 left-3 md:top-4 md:left-4 z-20">
                     <Button
                         variant="outline"
                         onClick={() => router.push("/dashboard")}
-                        className="gap-2 bg-white/90 dark:bg-slate-800/90 backdrop-blur-md shadow-lg border-white/50 dark:border-slate-700 rounded-2xl h-11 px-4 hover:bg-white dark:hover:bg-slate-800 transition-all dark:text-white/80"
+                        className="gap-2 bg-white/90 dark:bg-slate-800/90 backdrop-blur-md shadow-lg border-white/50 dark:border-slate-700 rounded-2xl h-9 px-2.5 md:h-11 md:px-4 hover:bg-white dark:hover:bg-slate-800 transition-all dark:text-white/80"
                     >
                         <ArrowLeft className="h-4 w-4" />
-                        Dashboard
+                        <span className="hidden md:inline">Dashboard</span>
                     </Button>
                 </div>
 
                 {/* Loading indicator */}
                 {isLoading && (
-                    <div className="absolute top-4 left-1/2 -translate-x-1/2 z-20">
-                        <div className="flex items-center gap-2 bg-white/90 dark:bg-slate-800/90 backdrop-blur-md shadow-lg rounded-full px-4 py-2 border border-white/50 dark:border-slate-700">
-                            <Loader2 className="h-4 w-4 text-blue-500 animate-spin" />
-                            <span className="text-sm font-medium text-slate-600 dark:text-slate-300">Loading photos...</span>
+                    <div className="absolute top-3 left-1/2 -translate-x-1/2 z-20 md:top-4">
+                        <div className="flex items-center gap-1.5 md:gap-2 bg-white/90 dark:bg-slate-800/90 backdrop-blur-md shadow-lg rounded-full px-3 py-1.5 md:px-4 md:py-2 border border-white/50 dark:border-slate-700">
+                            <Loader2 className="h-3.5 w-3.5 md:h-4 md:w-4 text-blue-500 animate-spin" />
+                            <span className="text-xs md:text-sm font-medium text-slate-600 dark:text-slate-300">Loading...</span>
                         </div>
                     </div>
                 )}
 
-                {/* Stats overlay */}
-                <div className="absolute bottom-6 left-4 z-20">
-                    <div className="flex items-center gap-2 bg-white/90 dark:bg-slate-800/90 backdrop-blur-md shadow-lg rounded-2xl px-4 py-2.5 border border-white/50 dark:border-slate-700">
-                        <ImageIcon className="h-4 w-4 text-blue-500 dark:text-blue-400" />
-                        <span className="text-sm font-semibold text-slate-700 dark:text-slate-200">
+                {/* Stats overlay — compact on mobile, positioned above bottom sheet */}
+                <div className="absolute bottom-3 left-3 z-20 md:bottom-6 md:left-4">
+                    <div className="flex items-center gap-1.5 md:gap-2 bg-white/90 dark:bg-slate-800/90 backdrop-blur-md shadow-lg rounded-xl md:rounded-2xl px-2.5 py-1.5 md:px-4 md:py-2.5 border border-white/50 dark:border-slate-700">
+                        <ImageIcon className="h-3.5 w-3.5 md:h-4 md:w-4 text-blue-500 dark:text-blue-400" />
+                        <span className="text-xs md:text-sm font-semibold text-slate-700 dark:text-slate-200">
                             {points.reduce((sum, p) => sum + p.c, 0).toLocaleString()} photos
                         </span>
-                        <span className="text-xs text-slate-400 dark:text-white/80 ml-1">
+                        <span className="text-[10px] md:text-xs text-slate-400 dark:text-white/80 ml-0.5 md:ml-1 hidden sm:inline">
                             in {points.length} locations
                         </span>
                     </div>
