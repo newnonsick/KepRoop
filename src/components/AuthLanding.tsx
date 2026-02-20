@@ -29,7 +29,7 @@ export default function AuthLanding({ googleClientId }: AuthLandingProps) {
     // Redirect if already logged in
     useEffect(() => {
         if (!isLoading && user) {
-            router.push("/dashboard");
+            router.push("/albums");
         }
     }, [user, isLoading, router]);
 
@@ -87,7 +87,7 @@ export default function AuthLanding({ googleClientId }: AuthLandingProps) {
 
             if (res.ok) {
                 await mutate(); // Refresh auth state
-                router.push("/dashboard");
+                router.push("/albums");
             } else {
                 const data = await res.json();
                 setError(data.error || "Google sign-in failed");
@@ -141,7 +141,7 @@ export default function AuthLanding({ googleClientId }: AuthLandingProps) {
 
             if (res.ok) {
                 await mutate(); // Refresh auth state
-                router.push("/dashboard");
+                router.push("/albums");
             } else {
                 const data = await res.json();
                 if (Array.isArray(data.error)) {

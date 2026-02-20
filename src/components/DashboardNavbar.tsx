@@ -59,7 +59,7 @@ export function DashboardNavbar() {
         <header className="sticky top-0 z-50 w-full bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl border-b border-slate-100 dark:border-slate-800">
             <div className="flex h-16 items-center justify-between px-4 sm:px-6 lg:px-8">
                 {/* Logo */}
-                <Link href="/dashboard" className="flex items-center gap-2 group">
+                <Link href="/albums" className="flex items-center gap-2 group">
                     <div className="w-9 h-9 relative overflow-hidden rounded-1xl shadow-xl shadow-blue-500/10">
                         <img src="/logo.png" alt="KepRoop Logo" className="w-full h-full object-cover" />
                     </div>

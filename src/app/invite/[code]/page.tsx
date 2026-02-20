@@ -97,7 +97,7 @@ export default function AcceptInvitePage({ params }: { params: Promise<{ code: s
                             <Button
                                 variant="ghost"
                                 className="w-full text-slate-600 hover:text-slate-800 hover:bg-slate-100 rounded-xl h-12"
-                                onClick={() => router.push("/dashboard")}
+                                onClick={() => router.push("/albums")}
                             >
                                 Go to dashboard
                             </Button>
@@ -122,7 +122,7 @@ export default function AcceptInvitePage({ params }: { params: Promise<{ code: s
                             <Button
                                 variant="ghost"
                                 className="w-full text-slate-600 hover:text-slate-800 hover:bg-slate-100 rounded-xl h-12"
-                                onClick={() => router.push("/dashboard")}
+                                onClick={() => router.push("/albums")}
                             >
                                 Go to dashboard
                             </Button>

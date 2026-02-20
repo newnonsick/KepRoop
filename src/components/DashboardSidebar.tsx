@@ -2,6 +2,7 @@
 
 import { LayoutGrid, User, Users, Plus, Heart, MapPin } from "lucide-react";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { CreateAlbumDialog } from "@/components/CreateAlbumDialog";
@@ -41,6 +42,9 @@ export function DashboardSidebar({
         },
     ];
 
+    const pathname = usePathname();
+    const isTimelineActive = pathname === '/timeline';
+
     return (
         <aside className={cn("w-64 flex flex-col gap-6 py-6 px-4 border-r border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900 backdrop-blur-sm sticky top-16 h-[calc(100vh-64px)] overflow-y-auto", className)}>
             {/* New Album Button */}
@@ -61,11 +65,13 @@ export function DashboardSidebar({
             {/* Navigation items */}
             <nav className="flex flex-col gap-1">
                 {navItems.map((item) => {
-                    const isActive = currentFilter === item.id;
+                    // Force dashboard nav items to be inactive if we're on the timeline or map pages
+                    const isActive = currentFilter === item.id && pathname === '/albums';
                     const Icon = item.icon;
 
                     return (
-                        <button
+                        <Link
+                            href="/albums"
                             key={item.id}
                             onClick={() => onFilterChange(item.id)}
                             className={cn(
@@ -82,13 +88,34 @@ export function DashboardSidebar({
                                 )}
                             />
                             {item.label}
-                        </button>
+                        </Link>
                     );
                 })}
             </nav>
 
-            {/* Map Link */}
+            {/* Timeline Link */}
             <div className="px-2 mt-4 pt-4 border-t border-slate-100 dark:border-slate-800">
+                <Link href="/timeline">
+                    <Button
+                        variant="ghost"
+                        className={cn(
+                            "w-full justify-start gap-3 rounded-xl h-10 px-4 transition-all group",
+                            isTimelineActive
+                                ? "bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 shadow-sm shadow-blue-500/5"
+                                : "text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 hover:text-slate-800 dark:hover:text-slate-200"
+                        )}
+                    >
+                        <LayoutGrid className={cn(
+                            "h-4 w-4 transition-colors",
+                            isTimelineActive ? "text-blue-500 dark:text-blue-400" : "text-slate-400 dark:text-slate-500 group-hover:text-slate-600 dark:group-hover:text-slate-300"
+                        )} />
+                        <span className="font-medium">Timeline View</span>
+                    </Button>
+                </Link>
+            </div>
+
+            {/* Map Link */}
+            <div className="px-2 mt-2 pt-2 border-t border-slate-100 dark:border-slate-800">
                 <Link href="/map">
                     <Button
                         variant="ghost"

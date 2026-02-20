@@ -59,8 +59,10 @@ export default function DashboardPage() {
 
     // Initial Fetch
     useEffect(() => {
-        fetchAlbums();
-    }, []);
+        if (albums.length === 0) {
+            fetchAlbums();
+        }
+    }, [fetchAlbums, albums.length]);
 
     const formatLocalDate = (dateString: string) => {
         return new Date(dateString).toLocaleDateString(undefined, {

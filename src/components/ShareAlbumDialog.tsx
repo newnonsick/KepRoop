@@ -233,7 +233,7 @@ export function ShareAlbumDialog({ albumId, albumTitle, albumVisibility = "priva
                 if (isSelf) {
                     toast.success("You left the album");
                     setOpen(false);
-                    router.push("/dashboard");
+                    router.push("/albums");
                     router.refresh();
                 } else {
                     setMembers(prev => prev.filter(m => m.userId !== memberUserId));

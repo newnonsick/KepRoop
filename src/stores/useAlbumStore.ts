@@ -108,6 +108,7 @@ export const useAlbumStore = create<AlbumState>((set, get) => ({
     },
 
     fetchAlbums: async (reset = false) => {
+        if (get().isLoading) return;
         set({ isLoading: true, error: null });
         if (reset) {
             set({ albums: [], cursor: null, hasMore: false });

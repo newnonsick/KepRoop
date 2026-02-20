@@ -1213,6 +1213,39 @@
         }
       }
     },
+    "/api/timeline": {
+      "get": {
+        "tags": [
+          "Timeline"
+        ],
+        "summary": "Get user's photo timeline",
+        "description": "Fetch all photos the user has access to, globally ordered by date taken. Supports cursor-based pagination.",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "cursor",
+            "schema": {
+              "type": "string"
+            },
+            "description": "Cursor for pagination (format timestamp_imageId)"
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "schema": {
+              "type": "integer",
+              "default": 50
+            },
+            "description": "Number of photos to return per page"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "A list of photos"
+          }
+        }
+      }
+    },
     "/api/user/profile": {
       "patch": {
         "tags": [

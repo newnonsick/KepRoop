@@ -191,7 +191,7 @@ export default function AlbumDetailPage({ params }: { params: Promise<{ id: stri
             const res = await fetch(`/api/albums/${albumId}`, { method: "DELETE" });
             if (res.ok) {
                 toast.success("Album deleted");
-                router.push("/dashboard");
+                router.push("/albums");
             } else {
                 toast.error("Failed to delete album");
             }
@@ -217,7 +217,7 @@ export default function AlbumDetailPage({ params }: { params: Promise<{ id: stri
 
             if (res.ok) {
                 toast.success("You left the album");
-                router.push("/dashboard");
+                router.push("/albums");
                 router.refresh();
             } else {
                 const data = await res.json();
@@ -731,7 +731,7 @@ export default function AlbumDetailPage({ params }: { params: Promise<{ id: stri
                             Please sign in with an account that has access.
                         </p>
                         <div className="flex gap-4">
-                            <Link href="/dashboard">
+                            <Link href="/albums">
                                 <Button variant="outline" className="gap-2">
                                     <ArrowLeft className="h-4 w-4" />
                                     Back to Dashboard
@@ -762,7 +762,7 @@ export default function AlbumDetailPage({ params }: { params: Promise<{ id: stri
                         <p className="text-slate-500 dark:text-slate-400 mb-8 max-w-md">
                             The album you are looking for does not exist or has been deleted.
                         </p>
-                        <Link href="/dashboard">
+                        <Link href="/albums">
                             <Button className="gap-2">
                                 <ArrowLeft className="h-4 w-4" />
                                 Back to Dashboard
@@ -788,7 +788,7 @@ export default function AlbumDetailPage({ params }: { params: Promise<{ id: stri
             <main className="max-w-6xl mx-auto px-6 py-10">
                 {/* Back Navigation */}
                 <Link
-                    href="/dashboard"
+                    href="/albums"
                     className="inline-flex items-center gap-2 text-sm text-slate-500 dark:text-slate-400 hover:text-blue-500 dark:hover:text-blue-400 transition-colors mb-8 group"
                 >
                     <ArrowLeft className="h-4 w-4 transition-transform group-hover:-translate-x-1" />

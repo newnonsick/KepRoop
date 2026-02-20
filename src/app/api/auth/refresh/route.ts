@@ -92,7 +92,7 @@ export async function POST(request: Request) {
 
 export async function GET(request: Request) {
     const url = new URL(request.url);
-    const redirectPath = url.searchParams.get("redirect") || "/dashboard";
+    const redirectPath = url.searchParams.get("redirect") || "/albums";
 
     try {
         const cookieStore = await cookies();

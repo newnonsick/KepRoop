@@ -293,7 +293,7 @@ export default function PhotoMapPage() {
                 <div className="absolute top-3 left-3 md:top-4 md:left-4 z-20">
                     <Button
                         variant="outline"
-                        onClick={() => router.push("/dashboard")}
+                        onClick={() => router.push("/albums")}
                         className="gap-2 bg-white/90 dark:bg-slate-800/90 backdrop-blur-md shadow-lg border-white/50 dark:border-slate-700 rounded-2xl h-9 px-2.5 md:h-11 md:px-4 hover:bg-white dark:hover:bg-slate-800 transition-all dark:text-white/80"
                     >
                         <ArrowLeft className="h-4 w-4" />

@@ -131,6 +131,7 @@ export const useMapStore = create<MapState>((set, get) => ({
     },
 
     fetchDateRange: async () => {
+        if (get().dateRange.min) return; // Prevent refetching if already cached
         try {
             const res = await fetch("/api/map/date-range");
             if (!res.ok) return;
