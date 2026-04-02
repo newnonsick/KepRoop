@@ -17,6 +17,7 @@ export interface TimelinePhoto {
 interface TimelineStore {
     photos: TimelinePhoto[];
     monthCounts: Record<string, number>;
+    totalCount: number;
     nextCursor: string | null;
     hasMore: boolean;
     isLoading: boolean;
@@ -28,6 +29,7 @@ interface TimelineStore {
     // Actions
     fetchTimeline: () => Promise<void>;
     loadMore: () => Promise<void>;
+    loadAllRemaining: () => Promise<number>;
     setGroupBy: (groupBy: 'month' | 'date') => void;
     reset: () => void;
 }
@@ -37,6 +39,7 @@ export const useTimelineStore = create<TimelineStore>()(
         (set, get) => ({
             photos: [],
             monthCounts: {},
+            totalCount: 0,
             nextCursor: null,
             hasMore: false,
             isLoading: false,
@@ -46,15 +49,20 @@ export const useTimelineStore = create<TimelineStore>()(
 
             fetchTimeline: async () => {
                 if (get().isLoading) return;
-                set({ isLoading: true, error: null, photos: [], monthCounts: {}, nextCursor: null, hasMore: false });
+                set({ isLoading: true, error: null, photos: [], monthCounts: {}, totalCount: 0, nextCursor: null, hasMore: false });
                 try {
                     const res = await fetch(`/api/timeline?limit=50`);
                     if (!res.ok) throw new Error("Failed to fetch timeline");
 
                     const data = await res.json();
+                    
+                    const newMonthCounts= data.monthCounts || {};
+                    const newTotalCount = Object.values(newMonthCounts).reduce<number>((acc, val) => acc + (val as number), 0);
+
                     set({
                         photos: data.photos,
-                        monthCounts: data.monthCounts || {},
+                        monthCounts: newMonthCounts,
+                        totalCount: newTotalCount,
                         nextCursor: data.nextCursor,
                         hasMore: data.hasMore,
                         isLoading: false,
@@ -90,12 +98,43 @@ export const useTimelineStore = create<TimelineStore>()(
                 }
             },
 
+            loadAllRemaining: async () => {
+                let currentHasMore = get().hasMore;
+                if (!currentHasMore) return get().photos.length;
+
+                set({ isLoadingMore: true, error: null });
+                try {
+                    while (currentHasMore) {
+                        const { nextCursor } = get();
+                        if (!nextCursor) break;
+
+                        const res = await fetch(`/api/timeline?limit=100&cursor=${encodeURIComponent(nextCursor)}`);
+                        if (!res.ok) throw new Error("Failed to load all photos");
+
+                        const data = await res.json();
+                        set({
+                            photos: [...get().photos, ...data.photos],
+                            nextCursor: data.nextCursor,
+                            hasMore: data.hasMore,
+                        });
+                        currentHasMore = data.hasMore;
+                    }
+                } catch (error: any) {
+                    console.error("Timeline load all error:", error);
+                    set({ error: error.message });
+                } finally {
+                    set({ isLoadingMore: false });
+                    return get().photos.length;
+                }
+            },
+
             setGroupBy: (groupBy) => set({ groupBy }),
 
             reset: () => {
                 set({
                     photos: [],
                     monthCounts: {},
+                    totalCount: 0,
                     nextCursor: null,
                     hasMore: false,
                     isLoading: false,

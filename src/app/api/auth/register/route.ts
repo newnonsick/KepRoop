@@ -7,6 +7,7 @@ import { createAccessToken, createRefreshToken } from "@/lib/auth/tokens";
 import { eq } from "drizzle-orm";
 import { cookies } from "next/headers";
 import { getAuthContext } from "@/lib/auth/session";
+import { checkRateLimit, getClientIp } from "@/lib/auth/rate-limit";
 
 const registerSchema = z.object({
     email: z.string().email(),
@@ -24,6 +25,24 @@ export async function POST(request: Request) {
     const { apiKey } = await getAuthContext();
     if (apiKey) {
         return NextResponse.json({ error: "API Key access not allowed for this endpoint" }, { status: 403 });
+    }
+
+    // Rate limit by IP: 3 registrations per minute, 10 per hour
+    const ip = getClientIp(request);
+    const minuteLimit = checkRateLimit(`register:min:${ip}`, 3, 60);
+    if (!minuteLimit.allowed) {
+        return NextResponse.json(
+            { error: "Too many registration attempts. Please try again later." },
+            { status: 429, headers: { "Retry-After": String(minuteLimit.retryAfter) } }
+        );
+    }
+
+    const hourLimit = checkRateLimit(`register:hour:${ip}`, 10, 3600);
+    if (!hourLimit.allowed) {
+        return NextResponse.json(
+            { error: "Too many registration attempts. Please try again later." },
+            { status: 429, headers: { "Retry-After": String(hourLimit.retryAfter) } }
+        );
     }
 
     try {
@@ -51,18 +70,17 @@ export async function POST(request: Request) {
             .returning();
 
         // Generate tokens
-        // Generate tokens
         const accessToken = await createAccessToken({ userId: newUser.id });
         const refreshId = crypto.randomUUID();
         const refreshToken = await createRefreshToken({ userId: newUser.id }, refreshId);
-        const refreshTokenHash = await hashPassword(refreshToken); // Hash refresh token before storing
+        const refreshTokenHash = await hashPassword(refreshToken);
 
-        // Store refresh token
+        // Store refresh token — 90 days to match cookie maxAge
         await db.insert(refreshTokens).values({
             id: refreshId,
             userId: newUser.id,
             tokenHash: refreshTokenHash,
-            expiresAt: new Date(Date.now() + 1000 * 60 * 60 * 24 * 30), // 30 days
+            expiresAt: new Date(Date.now() + 1000 * 60 * 60 * 24 * 90), // 90 days
         });
 
         // Set cookies

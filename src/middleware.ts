@@ -3,32 +3,26 @@ import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { verifyAccessToken } from "@/lib/auth/tokens";
 
-// Routes that always require authentication
-const PROTECTED_PATHS = ["/albums", "/map", "/timeline"];
+// Routes that require authentication (not handled by API self-auth)
+const PROTECTED_PATHS = ["/map", "/timeline"];
 
 // API routes that require authentication
 const PROTECTED_API_PATHS: string[] = [];
 
-// API routes that handle their own auth checks (allow unauthenticated requests through)
-const SELF_AUTH_API_PATHS = ["/api/albums", "/api/images", "/api/invites/accept"];
+// API routes and page routes that handle their own auth checks (allow unauthenticated requests through)
+const SELF_AUTH_PATHS = ["/api/albums", "/api/images", "/api/invites/accept", "/albums"];
 
 export async function middleware(request: NextRequest) {
     const { pathname } = request.nextUrl;
 
-    // Check if path requires auth
+    // Self-auth paths handle their own permission checks (for public albums, guest access, etc.)
+    const isSelfAuth = SELF_AUTH_PATHS.some((path) => pathname.startsWith(path));
+    if (isSelfAuth) {
+        return NextResponse.next();
+    }
+
     const isProtectedPage = PROTECTED_PATHS.some((path) => pathname.startsWith(path));
     const isProtectedApi = PROTECTED_API_PATHS.some((path) => pathname.startsWith(path));
-    const isSelfAuthApi = SELF_AUTH_API_PATHS.some((path) => pathname.startsWith(path));
-
-    // Self-auth APIs handle their own permission checks (for public albums, etc.)
-    if (isSelfAuthApi) {
-        return NextResponse.next();
-    }
-
-    // Page routes under /albums - allow through, API handles auth
-    if (pathname.startsWith("/albums")) {
-        return NextResponse.next();
-    }
 
     if (!isProtectedPage && !isProtectedApi) {
         return NextResponse.next();

@@ -57,6 +57,24 @@ export default function DashboardPage() {
     const [showFilters, setShowFilters] = useState(false);
     const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
 
+    // Debounced search: local state updates immediately, store updates after 300ms
+    const [localSearch, setLocalSearch] = useState(searchQuery);
+    useEffect(() => {
+        const timer = setTimeout(() => {
+            if (localSearch !== searchQuery) {
+                setSearchQuery(localSearch);
+            }
+        }, 300);
+        return () => clearTimeout(timer);
+    }, [localSearch, searchQuery, setSearchQuery]);
+
+    // Keep local search in sync if store resets externally
+    useEffect(() => {
+        if (searchQuery === "" && localSearch !== "") {
+            setLocalSearch("");
+        }
+    }, [searchQuery]);
+
     // Initial Fetch
     useEffect(() => {
         if (albums.length === 0) {
@@ -138,13 +156,13 @@ export default function DashboardPage() {
                                         <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 group-focus-within:text-blue-500 transition-colors" />
                                         <Input
                                             placeholder="Search albums..."
-                                            value={searchQuery}
-                                            onChange={(e) => setSearchQuery(e.target.value)}
+                                            value={localSearch}
+                                            onChange={(e) => setLocalSearch(e.target.value)}
                                             className="pl-11 pr-10 h-11 bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 rounded-2xl shadow-sm focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 transition-all text-sm font-medium placeholder:text-slate-400 dark:placeholder:text-slate-500 dark:text-slate-100"
                                         />
                                         {searchQuery && (
                                             <button
-                                                onClick={() => setSearchQuery("")}
+                                                onClick={() => { setLocalSearch(""); setSearchQuery(""); }}
                                                 className="absolute right-3 top-1/2 -translate-y-1/2 p-1.5 hover:bg-slate-100 rounded-xl transition-colors"
                                             >
                                                 <X className="h-4 w-4 text-slate-400" />
@@ -364,13 +382,13 @@ export default function DashboardPage() {
                                     <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 group-focus-within:text-blue-500 transition-colors" />
                                     <Input
                                         placeholder="Search albums..."
-                                        value={searchQuery}
-                                        onChange={(e) => setSearchQuery(e.target.value)}
+                                        value={localSearch}
+                                        onChange={(e) => setLocalSearch(e.target.value)}
                                         className="pl-11 pr-10 h-12 bg-white border-slate-200 rounded-2xl shadow-sm focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 transition-all text-sm font-medium"
                                     />
                                     {searchQuery && (
                                         <button
-                                            onClick={() => setSearchQuery("")}
+                                            onClick={() => { setLocalSearch(""); setSearchQuery(""); }}
                                             className="absolute right-3 top-1/2 -translate-y-1/2 p-1.5 hover:bg-slate-100 rounded-xl transition-colors"
                                         >
                                             <X className="h-4 w-4 text-slate-400" />

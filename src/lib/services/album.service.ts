@@ -37,21 +37,23 @@ export type UpdateAlbumData = {
 };
 
 export class AlbumService {
-    static async getAlbum(userId: string | null, albumId: string, options: { sortBy?: string, sortDir?: string } = {}) {
-        const { sortBy = 'createdAt', sortDir = 'desc' } = options;
-
+    /**
+     * Shared access check for album operations.
+     * Returns { hasAccess, role } or throws if album not found.
+     */
+    private static async checkAlbumAccess(userId: string | null, albumId: string) {
         const album = await db.query.albums.findFirst({ where: eq(albums.id, albumId) });
         if (!album) return null;
 
         let hasAccess = false;
         let role = "viewer";
 
-        // 1. Check Public Access
+        // 1. Public Access
         if (album.visibility === "public") {
             hasAccess = true;
         }
 
-        // 2. Check Guest Access
+        // 2. Guest Access
         if (!hasAccess && !userId) {
             const cookieStore = await cookies();
             const guestToken = cookieStore.get("keproop_guest_access")?.value;
@@ -63,7 +65,7 @@ export class AlbumService {
             }
         }
 
-        // 3. Check User Access (RBAC)
+        // 3. RBAC
         if (userId) {
             const userRole = await getAlbumRole(userId, albumId);
             if (userRole) {
@@ -78,14 +80,22 @@ export class AlbumService {
             throw new Error("Forbidden");
         }
 
-        // Fetch full details
+        return { album, role };
+    }
+
+    /**
+     * Get album metadata (no images). Returns album details, folders, cover image URL, total image count, and user role.
+     */
+    static async getAlbum(userId: string | null, albumId: string) {
+        const result = await this.checkAlbumAccess(userId, albumId);
+        if (!result) return null;
+
+        const { role } = result;
+
+        // Fetch album with folders only (no images)
         const details = await db.query.albums.findFirst({
             where: eq(albums.id, albumId),
             with: {
-                images: {
-                    where: (images, { isNull }) => isNull(images.deletedAt),
-                    orderBy: (images, { asc }) => [asc(images.createdAt)]
-                },
                 folders: {
                     orderBy: (folders, { asc }) => [asc(folders.name)]
                 }
@@ -94,52 +104,124 @@ export class AlbumService {
 
         if (!details) return null;
 
-        // Generate URLs
-        const imagesWithUrls = await Promise.all(details.images.map(async (img) => ({
-            ...img,
-            url: await generateDownloadUrl(img.s3KeyThumb || img.s3KeyDisplay || img.s3Key!),
-            thumbUrl: img.s3KeyThumb ? await generateDownloadUrl(img.s3KeyThumb) : null,
-            displayUrl: img.s3KeyDisplay ? await generateDownloadUrl(img.s3KeyDisplay) : null,
-            originalUrl: img.s3KeyOriginal ? await generateDownloadUrl(img.s3KeyOriginal) : (img.s3Key ? await generateDownloadUrl(img.s3Key) : null),
-        })));
+        // Get total image count and per-folder counts
+        const countResult = await db
+            .select({
+                total: sql<number>`count(*)`.mapWith(Number),
+            })
+            .from(images)
+            .where(and(eq(images.albumId, albumId), isNull(images.deletedAt)));
 
-        // Sorting Images
-        imagesWithUrls.sort((a, b) => {
-            let aVal: number | null = null;
-            let bVal: number | null = null;
+        const totalImageCount = countResult[0]?.total || 0;
 
-            if (sortBy === 'dateTaken') {
-                aVal = a.dateTaken ? new Date(a.dateTaken).getTime() : null;
-                bVal = b.dateTaken ? new Date(b.dateTaken).getTime() : null;
-            } else {
-                aVal = a.createdAt ? new Date(a.createdAt).getTime() : null;
-                bVal = b.createdAt ? new Date(b.createdAt).getTime() : null;
-            }
-
-            if (aVal === null && bVal === null) return 0;
-            if (aVal === null) return 1;
-            if (bVal === null) return -1;
-
-            return sortDir === 'asc' ? aVal - bVal : bVal - aVal;
-        });
-
-        // Cover Image
+        // Get cover image URL
         let coverImageUrl = null;
         if (details.coverImageId) {
-            const cover = imagesWithUrls.find(img => img.id === details.coverImageId);
-            coverImageUrl = cover?.url || null;
+            const coverImg = await db.query.images.findFirst({
+                where: eq(images.id, details.coverImageId),
+            });
+            if (coverImg) {
+                coverImageUrl = await generateDownloadUrl(coverImg.s3KeyThumb || coverImg.s3KeyDisplay || coverImg.s3Key!);
+            }
         }
-        if (!coverImageUrl && imagesWithUrls.length > 0) {
-            coverImageUrl = imagesWithUrls[0].url;
+
+        // If no explicit cover, use first image
+        if (!coverImageUrl && totalImageCount > 0) {
+            const firstImg = await db.query.images.findFirst({
+                where: and(eq(images.albumId, albumId), isNull(images.deletedAt)),
+                orderBy: (images, { asc }) => [asc(images.createdAt)],
+            });
+            if (firstImg) {
+                coverImageUrl = await generateDownloadUrl(firstImg.s3KeyThumb || firstImg.s3KeyDisplay || firstImg.s3Key!);
+            }
         }
 
         return {
             album: {
                 ...details,
-                images: imagesWithUrls,
-                coverImageUrl
+                coverImageUrl,
+                totalImageCount,
             },
-            userRole: role
+            userRole: role,
+        };
+    }
+
+    /**
+     * Get paginated images for an album with signed URLs.
+     * Uses offset/limit for lazy loading (infinite scroll).
+     */
+    static async getAlbumImages(
+        userId: string | null,
+        albumId: string,
+        options: {
+            sortBy?: string;
+            sortDir?: string;
+            folderId?: string | null;
+            offset?: number;
+            limit?: number;
+        } = {}
+    ) {
+        const {
+            sortBy = "createdAt",
+            sortDir = "desc",
+            folderId,
+            offset = 0,
+            limit = 30,
+        } = options;
+
+        // Access check
+        await this.checkAlbumAccess(userId, albumId);
+
+        // Build conditions
+        const conditions = [eq(images.albumId, albumId), isNull(images.deletedAt)];
+
+        if (folderId === "root") {
+            // Root view: only images NOT in any folder
+            conditions.push(isNull(images.folderId));
+        } else if (folderId) {
+            conditions.push(eq(images.folderId, folderId));
+        }
+        // If folderId is undefined/null, return ALL images (for total counts, etc.)
+
+        // Sort
+        const sortColumn = sortBy === "dateTaken" ? images.dateTaken : images.createdAt;
+        const orderFn = sortDir === "asc" ? asc : desc;
+
+        // Query images
+        const [albumImages, countResult] = await Promise.all([
+            db.query.images.findMany({
+                where: and(...conditions),
+                orderBy: [orderFn(sortColumn), orderFn(images.createdAt)],
+                limit: limit,
+                offset: offset,
+            }),
+            db
+                .select({ total: sql<number>`count(*)`.mapWith(Number) })
+                .from(images)
+                .where(and(...conditions)),
+        ]);
+
+        const total = countResult[0]?.total || 0;
+
+        // Generate signed URLs
+        const imagesWithUrls = await Promise.all(
+            albumImages.map(async (img) => ({
+                ...img,
+                url: await generateDownloadUrl(img.s3KeyThumb || img.s3KeyDisplay || img.s3Key!),
+                thumbUrl: img.s3KeyThumb ? await generateDownloadUrl(img.s3KeyThumb) : null,
+                displayUrl: img.s3KeyDisplay ? await generateDownloadUrl(img.s3KeyDisplay) : null,
+                originalUrl: img.s3KeyOriginal
+                    ? await generateDownloadUrl(img.s3KeyOriginal)
+                    : img.s3Key
+                        ? await generateDownloadUrl(img.s3Key)
+                        : null,
+            }))
+        );
+
+        return {
+            images: imagesWithUrls,
+            total,
+            hasMore: offset + albumImages.length < total,
         };
     }
 
@@ -174,6 +256,7 @@ export class AlbumService {
         const isOwner = await checkAlbumPermission(userId, albumId, "owner");
         if (!isOwner) throw new Error("Forbidden");
 
+        // Collect S3 keys before deleting DB records
         const albumImages = await db.select({
             s3Key: images.s3Key,
             s3KeyOriginal: images.s3KeyOriginal,
@@ -189,17 +272,22 @@ export class AlbumService {
             if (img.s3KeyThumb) keysToDelete.add(img.s3KeyThumb);
         }
 
-        if (keysToDelete.size > 0) {
-            await deleteS3Objects(Array.from(keysToDelete));
-        }
-
+        // Log activity before deletion (DB is source of truth)
         await logActivity({
             userId,
             albumId,
             action: "album_delete",
         });
 
+        // Delete DB records first — if this fails, S3 objects are preserved
         await db.delete(albums).where(eq(albums.id, albumId));
+
+        // Delete S3 objects last — orphaned objects can be cleaned up later
+        if (keysToDelete.size > 0) {
+            deleteS3Objects(Array.from(keysToDelete)).catch(err =>
+                console.error("Failed to delete S3 objects for album:", albumId, err)
+            );
+        }
     }
 
     static async listAlbums(params: ListAlbumsParams) {

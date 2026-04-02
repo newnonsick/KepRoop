@@ -67,7 +67,7 @@ export async function POST(request: Request) {
             id: refreshId,
             userId: user.id,
             tokenHash: refreshTokenHash,
-            expiresAt: new Date(Date.now() + 1000 * 60 * 60 * 24 * 30),
+            expiresAt: new Date(Date.now() + 1000 * 60 * 60 * 24 * 90), // 90 days
         });
 
         const cookieStore = await cookies();
@@ -75,7 +75,7 @@ export async function POST(request: Request) {
             httpOnly: true,
             secure: process.env.NODE_ENV === "production",
             sameSite: "lax",
-            maxAge: 60 * 15,
+            maxAge: 60 * 60, // 1 hour (consistent with login)
             path: "/",
         });
 

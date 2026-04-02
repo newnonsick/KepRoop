@@ -1,5 +1,5 @@
 
-import { S3Client, PutObjectCommand, GetObjectCommand, DeleteObjectCommand } from "@aws-sdk/client-s3";
+import { S3Client, PutObjectCommand, GetObjectCommand, DeleteObjectCommand, DeleteObjectsCommand } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 
 const s3Client = new S3Client({
@@ -61,10 +61,30 @@ export async function deleteS3Object(key: string) {
 }
 
 /**
- * Delete multiple S3 objects (for bulk operations)
+ * Delete multiple S3 objects using native S3 batch delete (up to 1,000 per request).
  */
 export async function deleteS3Objects(keys: string[]) {
-    return Promise.all(keys.map(key => deleteS3Object(key)));
+    if (keys.length === 0) return;
+
+    // S3 DeleteObjects supports max 1,000 keys per request
+    const BATCH_SIZE = 1_000;
+    for (let i = 0; i < keys.length; i += BATCH_SIZE) {
+        const batch = keys.slice(i, i + BATCH_SIZE);
+        const command = new DeleteObjectsCommand({
+            Bucket: BUCKET_NAME,
+            Delete: {
+                Objects: batch.map(Key => ({ Key })),
+                Quiet: true,
+            },
+        });
+        try {
+            await s3Client.send(command);
+        } catch (error) {
+            console.error(`Failed to batch delete ${batch.length} S3 objects:`, error);
+            // Fallback to individual deletes for this batch
+            await Promise.all(batch.map(key => deleteS3Object(key)));
+        }
+    }
 }
 
 /**

@@ -14,10 +14,10 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "KepRoop — Secure Photo Albums",
+  title: "KepRoop",
   description: "Manage and share your photo albums securely. The simplest way to organize your memories and keep them safe.",
   openGraph: {
-    title: "KepRoop — Secure Photo Albums",
+    title: "KepRoop",
     description: "Manage and share your photo albums securely. The simplest way to organize your memories and keep them safe.",
     images: [{
       url: "/KepRoop_metadata_logo.png",
@@ -29,7 +29,7 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: "KepRoop — Secure Photo Albums",
+    title: "KepRoop",
     description: "Manage and share your photo albums securely. The simplest way to organize your memories and keep them safe.",
     images: ["/KepRoop_metadata_logo.png"],
   },

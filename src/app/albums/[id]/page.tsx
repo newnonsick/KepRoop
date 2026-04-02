@@ -1,11 +1,11 @@
 "use client";
 
-import { useEffect, useState, use } from "react";
+import { useEffect, useState, use, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft, Lock, Globe, Plus, Upload, Loader2, Image as ImageIcon, Trash2, Star, Download, MoreVertical, LogOut, UserMinus, Camera, X, CheckSquare, Square, XCircle, ArrowUpDown, Folder, FolderOpen, ChevronRight, FolderPlus, Edit2, History } from "lucide-react";
 import useSWR from "swr";
-import { fetcher } from "@/lib/fetcher";
+import { fetcher, FetchError } from "@/lib/fetcher";
 import { useAuth } from "@/components/providers/AuthProvider";
 import { useAlbumDetailStore } from "@/stores/useAlbumDetailStore";
 import { DragOverlay } from "@/components/DragOverlay";
@@ -104,8 +104,9 @@ export default function AlbumDetailPage({ params }: { params: Promise<{ id: stri
         return () => reset();
     }, [albumId, reset]);
 
+    // Album metadata (no images)
     const { data: albumData, error: albumError, isLoading: albumLoading, mutate: mutateAlbum } = useSWR(
-        `/api/albums/${albumId}?sortBy=${sortBy}&sortDir=${sortDir}`,
+        `/api/albums/${albumId}`,
         fetcher,
         { revalidateOnFocus: false }
     );
@@ -113,14 +114,94 @@ export default function AlbumDetailPage({ params }: { params: Promise<{ id: stri
 
     const [deletingImageId, setDeletingImageId] = useState<string | null>(null);
 
+    // === Lazy-loaded images state ===
+    const [images, setImages] = useState<Image[]>([]);
+    const [imageTotalCount, setImageTotalCount] = useState(0);
+    const [hasMoreImages, setHasMoreImages] = useState(false);
+    const [isLoadingImages, setIsLoadingImages] = useState(false);
+    const [isLoadingMoreImages, setIsLoadingMoreImages] = useState(false);
+    const sentinelRef = useRef<HTMLDivElement>(null);
+
+    const IMAGES_PER_PAGE = 30;
+
+    // Build the folder query param for the images API
+    const folderParam = currentFolderId ? currentFolderId : "root";
+
+    // Fetch initial batch of images when album/sort/folder changes
+    const fetchImages = useCallback(async () => {
+        setIsLoadingImages(true);
+        try {
+            const params = new URLSearchParams({
+                sortBy,
+                sortDir,
+                folderId: folderParam,
+                offset: "0",
+                limit: String(IMAGES_PER_PAGE),
+            });
+            const res = await fetch(`/api/albums/${albumId}/images?${params}`);
+            if (!res.ok) return;
+            const data = await res.json();
+            setImages(data.images || []);
+            setImageTotalCount(data.total || 0);
+            setHasMoreImages(data.hasMore || false);
+        } catch (err) {
+            console.error("Failed to fetch images:", err);
+        } finally {
+            setIsLoadingImages(false);
+        }
+    }, [albumId, sortBy, sortDir, folderParam]);
+
+    // Fetch more images for infinite scroll
+    const fetchMoreImages = useCallback(async () => {
+        if (isLoadingMoreImages || !hasMoreImages) return;
+        setIsLoadingMoreImages(true);
+        try {
+            const params = new URLSearchParams({
+                sortBy,
+                sortDir,
+                folderId: folderParam,
+                offset: String(images.length),
+                limit: String(IMAGES_PER_PAGE),
+            });
+            const res = await fetch(`/api/albums/${albumId}/images?${params}`);
+            if (!res.ok) return;
+            const data = await res.json();
+            setImages(prev => [...prev, ...(data.images || [])]);
+            setImageTotalCount(data.total || 0);
+            setHasMoreImages(data.hasMore || false);
+        } catch (err) {
+            console.error("Failed to load more images:", err);
+        } finally {
+            // Small delay to prevent rapid re-triggers from IntersectionObserver
+            setTimeout(() => setIsLoadingMoreImages(false), 150);
+        }
+    }, [albumId, sortBy, sortDir, folderParam, images.length, isLoadingMoreImages, hasMoreImages]);
+
+    // Trigger initial image fetch when album data is available
+    useEffect(() => {
+        if (albumData?.album) {
+            fetchImages();
+        }
+    }, [albumData?.album?.id, sortBy, sortDir, currentFolderId, fetchImages]);
+
+    // IntersectionObserver for infinite scroll
+    useEffect(() => {
+        if (!sentinelRef.current || !hasMoreImages) return;
+        const observer = new IntersectionObserver(
+            (entries) => {
+                if (entries[0].isIntersecting && hasMoreImages && !isLoadingMoreImages) {
+                    fetchMoreImages();
+                }
+            },
+            { rootMargin: "200px" }
+        );
+        observer.observe(sentinelRef.current);
+        return () => observer.disconnect();
+    }, [hasMoreImages, isLoadingMoreImages, fetchMoreImages]);
+
     // Handle Access Denial & Race Conditions
     useEffect(() => {
-        // If we have an auth error (401/403) but the user IS logged in, 
-        // it's likely a token expiration race condition where the auth hook refreshed it.
-        // Retry the album fetch.
-        // @ts-ignore
-        if (user && (albumError?.status === 401 || albumError?.status === 403)) {
-            console.log("User is logged in but Album returned 401/403. Retrying...");
+        if (user && albumError instanceof FetchError && (albumError.status === 401 || albumError.status === 403)) {
             mutateAlbum();
         }
     }, [user, albumError, mutateAlbum]);
@@ -136,18 +217,11 @@ export default function AlbumDetailPage({ params }: { params: Promise<{ id: stri
     // Photo Navigation State
     const [selectedImageIndex, setSelectedImageIndex] = useState<number | null>(null);
 
-    // Multi-select state for bulk operations
-
 
     const folders = (albumData?.album?.folders || []) as Folder[];
 
-    // Filter images by current folder
-    const images = (albumData?.album?.images || []).filter((img: Image) => {
-        if (currentFolderId) return img.folderId === currentFolderId;
-        return !img.folderId; // Root View: Only show images NOT in any folder
-    });
-
     const imageCount = images.length;
+    const totalImageCount = albumData?.album?.totalImageCount || imageTotalCount;
 
     const album = albumData?.album || null;
     const userRole = albumData?.userRole || null;
@@ -156,17 +230,70 @@ export default function AlbumDetailPage({ params }: { params: Promise<{ id: stri
     const canEdit = userRole === "owner" || userRole === "editor";
     const isOwner = userRole === "owner";
 
-    // Navigation Handlers
-    const handleNext = () => {
-        if (selectedImageIndex === null) return;
-        setSelectedImageIndex((prev) => (prev === null || prev === images.length - 1 ? 0 : prev + 1));
-    };
+    // Load ALL remaining images at once (used when wrapping to the true last photo)
+    const [isLoadingAll, setIsLoadingAll] = useState(false);
+    const loadAllRemainingImages = useCallback(async (): Promise<number> => {
+        if (!hasMoreImages) return images.length;
+        setIsLoadingAll(true);
+        try {
+            // Fetch everything from current offset to the end
+            const params = new URLSearchParams({
+                sortBy,
+                sortDir,
+                folderId: folderParam,
+                offset: String(images.length),
+                limit: String(imageTotalCount), // large enough to get all remaining
+            });
+            const res = await fetch(`/api/albums/${albumId}/images?${params}`);
+            if (!res.ok) return images.length;
+            const data = await res.json();
+            const newImages = data.images || [];
+            setImages(prev => [...prev, ...newImages]);
+            setHasMoreImages(false);
+            setImageTotalCount(data.total || 0);
+            return images.length + newImages.length;
+        } catch (err) {
+            console.error("Failed to load all images:", err);
+            return images.length;
+        } finally {
+            setIsLoadingAll(false);
+        }
+    }, [albumId, sortBy, sortDir, folderParam, images.length, imageTotalCount, hasMoreImages]);
 
-    const handlePrev = () => {
+    // Navigation Handlers — auto-load more when approaching end, wrap around
+    const handleNext = useCallback(() => {
         if (selectedImageIndex === null) return;
-        setSelectedImageIndex((prev) => (prev === null || prev === 0 ? images.length - 1 : prev - 1));
-    };
+        const nextIndex = selectedImageIndex + 1;
 
+        // If approaching end of loaded images and there's more, prefetch
+        if (nextIndex >= images.length - 5 && hasMoreImages && !isLoadingMoreImages) {
+            fetchMoreImages();
+        }
+
+        if (nextIndex < images.length) {
+            setSelectedImageIndex(nextIndex);
+        } else if (!hasMoreImages) {
+            // All images loaded — wrap to first photo
+            setSelectedImageIndex(0);
+        }
+        // If at last loaded image and more are being fetched, stay put
+    }, [selectedImageIndex, images.length, hasMoreImages, isLoadingMoreImages, fetchMoreImages]);
+
+    const handlePrev = useCallback(async () => {
+        if (selectedImageIndex === null) return;
+        if (selectedImageIndex === 0) {
+            if (hasMoreImages) {
+                // Load ALL remaining images, then jump to the true last photo
+                const totalLoaded = await loadAllRemainingImages();
+                setSelectedImageIndex(totalLoaded - 1);
+            } else {
+                // All images already loaded — wrap to last
+                setSelectedImageIndex(images.length - 1);
+            }
+        } else {
+            setSelectedImageIndex(selectedImageIndex - 1);
+        }
+    }, [selectedImageIndex, images.length, hasMoreImages, loadAllRemainingImages]);
 
 
     // Keyboard Navigation
@@ -180,7 +307,7 @@ export default function AlbumDetailPage({ params }: { params: Promise<{ id: stri
 
         window.addEventListener("keydown", handleKeyDown);
         return () => window.removeEventListener("keydown", handleKeyDown);
-    }, [selectedImageIndex, images.length]);
+    }, [selectedImageIndex, handleNext, handlePrev]);
 
 
 
@@ -255,7 +382,7 @@ export default function AlbumDetailPage({ params }: { params: Promise<{ id: stri
                 const data = await res.json();
                 toast.success(`Deleted ${data.deletedCount} photos`);
                 deselectAll();
-                toggleSelectMode();
+                if (selectMode) toggleSelectMode();
                 refreshAlbum();
             } else {
                 const error = await res.json();
@@ -306,7 +433,10 @@ export default function AlbumDetailPage({ params }: { params: Promise<{ id: stri
         }
     }
 
-    const refreshAlbum = () => mutateAlbum();
+    const refreshAlbum = () => {
+        mutateAlbum();
+        fetchImages();
+    };
 
 
     async function uploadSingleFile(file: File, index: number, total: number, folderId?: string) {
@@ -696,10 +826,9 @@ export default function AlbumDetailPage({ params }: { params: Promise<{ id: stri
 
     // Error State Handling (Access Denied / Not Found)
     if (albumError || (!album && !loading)) {
-        // @ts-ignore
-        const status = albumError?.status;
+        const status = albumError instanceof FetchError ? albumError.status : undefined;
         const isAccessDenied = status === 401 || status === 403;
-        const isNotFound = status === 404 || (!album && !loading); // Fallback for null data
+        const isNotFound = status === 404 || (!album && !loading);
 
         if (isAccessDenied) {
             // If we are currently retrying (user is logged in), show loading skeleton instead of error
@@ -813,7 +942,7 @@ export default function AlbumDetailPage({ params }: { params: Promise<{ id: stri
                             <p className="text-slate-500 dark:text-slate-400">{album.description}</p>
                         )}
                         <p className="text-sm text-slate-400 mt-1">
-                            {imageCount} {imageCount === 1 ? "photo" : "photos"}
+                            {totalImageCount} {totalImageCount === 1 ? "photo" : "photos"}
                         </p>
                     </div>
 
@@ -1082,7 +1211,7 @@ export default function AlbumDetailPage({ params }: { params: Promise<{ id: stri
                                         {folder.name}
                                     </span>
                                     <span className="text-xs text-slate-400 mt-1 relative z-10">
-                                        {albumData?.album?.images?.filter((img: Image) => img.folderId === folder.id).length || 0} photos
+                                        Folder
                                     </span>
                                 </button>
 
@@ -1154,7 +1283,7 @@ export default function AlbumDetailPage({ params }: { params: Promise<{ id: stri
                 )}
 
                 {/* Bulk Action Toolbar */}
-                {canEdit && imageCount > 0 && (
+                {canEdit && totalImageCount > 0 && (
                     <div className="mb-6 flex items-center gap-2 flex-wrap">
                         {!selectMode ? (
                             <>
@@ -1236,7 +1365,7 @@ export default function AlbumDetailPage({ params }: { params: Promise<{ id: stri
                                     onClick={selectedIds.size === images.length ? deselectAll : selectAll}
                                     className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-slate-600 dark:text-slate-300 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-full hover:bg-slate-50 dark:hover:bg-slate-700 transition-all shadow-sm"
                                 >
-                                    {selectedIds.size === images.length ? 'Deselect All' : 'Select All'}
+                                    {selectedIds.size === images.length ? 'Deselect All' : `Select All (${images.length})`}
                                 </button>
 
                                 {/* Move Photos */}
@@ -1298,7 +1427,17 @@ export default function AlbumDetailPage({ params }: { params: Promise<{ id: stri
                 )}
 
                 {/* Gallery - Masonry Layout with Dynamic Aspect Ratios */}
-                {imageCount === 0 ? (
+                {isLoadingImages ? (
+                    <div className="columns-2 sm:columns-3 md:columns-4 lg:columns-5 gap-4">
+                        {[...Array(12)].map((_, i) => (
+                            <Skeleton
+                                key={`loading-img-${i}`}
+                                className="mb-4 rounded-2xl w-full"
+                                style={{ height: `${150 + Math.random() * 200}px` }}
+                            />
+                        ))}
+                    </div>
+                ) : imageCount === 0 ? (
                     <div className="flex flex-col items-center justify-center py-24 bg-white dark:bg-slate-800 rounded-3xl border border-slate-100 dark:border-slate-700 shadow-sm">
                         <div className="w-20 h-20 bg-blue-50 dark:bg-blue-900/30 rounded-2xl flex items-center justify-center mb-6">
                             <ImageIcon className="h-10 w-10 text-blue-400" strokeWidth={1.5} />
@@ -1477,6 +1616,15 @@ export default function AlbumDetailPage({ params }: { params: Promise<{ id: stri
                                 />
                             </label>
                         )}
+
+                        {/* Infinite scroll sentinel */}
+                        {hasMoreImages && (
+                            <div ref={sentinelRef} className="mb-4 break-inside-avoid">
+                                <div className="flex items-center justify-center py-8">
+                                    <Loader2 className="h-6 w-6 animate-spin text-blue-400" />
+                                </div>
+                            </div>
+                        )}
                     </div>
                 )}
             </main>
@@ -1546,7 +1694,11 @@ export default function AlbumDetailPage({ params }: { params: Promise<{ id: stri
                             className="absolute right-4 top-1/2 -translate-y-1/2 z-50 p-4 bg-black/20 hover:bg-black/40 backdrop-blur-md rounded-full text-white transition-all shadow-lg border border-white/20 group"
                             aria-label="Next photo"
                         >
-                            <ArrowLeft className="h-8 w-8 rotate-180 group-hover:scale-110 transition-transform" />
+                            {isLoadingMoreImages && selectedImageIndex === images.length - 1 ? (
+                                <Loader2 className="h-8 w-8 animate-spin" />
+                            ) : (
+                                <ArrowLeft className="h-8 w-8 rotate-180 group-hover:scale-110 transition-transform" />
+                            )}
                         </button>
 
                         {/* Image Display */}
@@ -1558,7 +1710,10 @@ export default function AlbumDetailPage({ params }: { params: Promise<{ id: stri
                                     className="max-h-full max-w-full object-contain rounded-lg shadow-2xl"
                                 />
                                 <div className="absolute bottom-4 left-1/2 -translate-x-1/2 px-4 py-2 bg-black/50 backdrop-blur-md rounded-full text-white text-sm flex items-center gap-3">
-                                    <span>{selectedImageIndex + 1} / {images.length}</span>
+                                    <span>{selectedImageIndex + 1} / {imageTotalCount}</span>
+                                    {isLoadingMoreImages && (
+                                        <Loader2 className="h-3.5 w-3.5 animate-spin text-blue-300" />
+                                    )}
                                     {images[selectedImageIndex].dateTaken && (
                                         <span className="text-white/70">
                                             {new Date(images[selectedImageIndex].dateTaken!).toLocaleDateString()}

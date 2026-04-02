@@ -7,6 +7,7 @@ import { createAccessToken, createRefreshToken } from "@/lib/auth/tokens";
 import { eq } from "drizzle-orm";
 import { cookies } from "next/headers";
 import { getAuthContext } from "@/lib/auth/session";
+import { checkRateLimit, getClientIp } from "@/lib/auth/rate-limit";
 
 const loginSchema = z.object({
     email: z.string().email(),
@@ -18,6 +19,24 @@ export async function POST(request: Request) {
     const { apiKey } = await getAuthContext();
     if (apiKey) {
         return NextResponse.json({ error: "API Key access not allowed for this endpoint" }, { status: 403 });
+    }
+
+    // Rate limit by IP: 5 attempts per minute, 20 per hour
+    const ip = getClientIp(request);
+    const minuteLimit = checkRateLimit(`login:min:${ip}`, 5, 60);
+    if (!minuteLimit.allowed) {
+        return NextResponse.json(
+            { error: "Too many login attempts. Please try again later." },
+            { status: 429, headers: { "Retry-After": String(minuteLimit.retryAfter) } }
+        );
+    }
+
+    const hourLimit = checkRateLimit(`login:hour:${ip}`, 20, 3600);
+    if (!hourLimit.allowed) {
+        return NextResponse.json(
+            { error: "Too many login attempts. Please try again later." },
+            { status: 429, headers: { "Retry-After": String(hourLimit.retryAfter) } }
+        );
     }
 
     try {

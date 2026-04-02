@@ -10,6 +10,7 @@ import { useTimelineStore, TimelinePhoto } from "@/stores/useTimelineStore";
 import { cn } from "@/lib/utils";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { VisuallyHidden } from "@radix-ui/react-visually-hidden";
+import { Skeleton } from "@/components/ui/skeleton";
 import Link from 'next/link';
 
 // Helper to group photos
@@ -44,11 +45,13 @@ export function TimelineGrid() {
     const {
         photos,
         monthCounts,
+        totalCount,
         hasMore,
         isLoading,
         isLoadingMore,
         fetchTimeline,
         loadMore,
+        loadAllRemaining,
         groupBy,
         setGroupBy,
         reset
@@ -62,33 +65,53 @@ export function TimelineGrid() {
 
     const [selectedImageIndex, setSelectedImageIndex] = useState<number | null>(null);
 
+    // Navigation Handlers — auto-load more when approaching end, wrap around
+    const handleNext = useCallback(() => {
+        if (selectedImageIndex === null) return;
+        const nextIndex = selectedImageIndex + 1;
+
+        // If approaching end of loaded images and there's more, prefetch
+        if (nextIndex >= photos.length - 5 && hasMore && !isLoadingMore) {
+            loadMore();
+        }
+
+        if (nextIndex < photos.length) {
+            setSelectedImageIndex(nextIndex);
+        } else if (!hasMore) {
+            // All images loaded — wrap to first photo
+            setSelectedImageIndex(0);
+        }
+        // If at last loaded image and more are being fetched, stay put
+    }, [selectedImageIndex, photos.length, hasMore, isLoadingMore, loadMore]);
+
+    const handlePrev = useCallback(async () => {
+        if (selectedImageIndex === null) return;
+        if (selectedImageIndex === 0) {
+            if (hasMore) {
+                // Load ALL remaining images, then jump to the true last photo
+                const totalLoaded = await loadAllRemaining();
+                setSelectedImageIndex(totalLoaded - 1);
+            } else {
+                // All images already loaded — wrap to last
+                setSelectedImageIndex(photos.length - 1);
+            }
+        } else {
+            setSelectedImageIndex(selectedImageIndex - 1);
+        }
+    }, [selectedImageIndex, photos.length, hasMore, loadAllRemaining]);
+
     // Keyboard Navigation & Auto Load More
     useEffect(() => {
         if (selectedImageIndex === null) return;
 
-        // Auto load more if we are near the end of the list
-        if (selectedImageIndex >= photos.length - 5 && hasMore && !isLoadingMore) {
-            loadMore();
-        }
-
         const handleKeyDown = (e: KeyboardEvent) => {
-            if (e.key === "ArrowRight") {
-                setSelectedImageIndex((prev) => {
-                    if (prev === null) return 0;
-                    if (prev === photos.length - 1) {
-                        return hasMore ? prev : 0; // Don't loop if we might be loading more
-                    }
-                    return prev + 1;
-                });
-            }
-            if (e.key === "ArrowLeft") {
-                setSelectedImageIndex((prev) => (prev === null || prev === 0 ? photos.length - 1 : prev - 1));
-            }
+            if (e.key === "ArrowRight") handleNext();
+            if (e.key === "ArrowLeft") handlePrev();
         };
 
         window.addEventListener("keydown", handleKeyDown);
         return () => window.removeEventListener("keydown", handleKeyDown);
-    }, [selectedImageIndex, photos.length, hasMore, isLoadingMore, loadMore]);
+    }, [selectedImageIndex, handleNext, handlePrev]);
 
     async function handleDownload(imageId: string, fallbackUrl: string | null) {
         try {
@@ -140,8 +163,19 @@ export function TimelineGrid() {
 
     if (isLoading && photos.length === 0) {
         return (
-            <div className="flex justify-center items-center h-64">
-                <Loader2 className="h-8 w-8 animate-spin text-blue-500" />
+            <div className="space-y-12 pb-20 mt-14">
+                {[...Array(2)].map((_, groupIndex) => (
+                    <div key={`skeleton-group-${groupIndex}`} className="space-y-4">
+                        <div className="flex justify-between items-end mb-4">
+                            <Skeleton className="h-8 w-48 rounded-lg" />
+                        </div>
+                        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-2 sm:gap-4 auto-rows-[200px]">
+                            {[...Array(10)].map((_, i) => (
+                                <Skeleton key={`skeleton-img-${i}`} className="w-full h-full rounded-xl" />
+                            ))}
+                        </div>
+                    </div>
+                ))}
             </div>
         );
     }
@@ -297,30 +331,32 @@ export function TimelineGrid() {
                         <button
                             onClick={(e) => {
                                 e.stopPropagation();
-                                setSelectedImageIndex((prev) => (prev === null || prev === 0 ? photos.length - 1 : prev - 1));
+                                handlePrev();
                             }}
                             className="absolute left-4 top-1/2 -translate-y-1/2 z-50 p-4 bg-black/20 hover:bg-black/40 backdrop-blur-md rounded-full text-white transition-all shadow-lg border border-white/20 group"
                             aria-label="Previous photo"
                         >
-                            <ArrowLeft className="h-8 w-8 group-hover:scale-110 transition-transform" />
+                            {isLoadingMore && selectedImageIndex === 0 ? (
+                                <Loader2 className="h-8 w-8 animate-spin" />
+                            ) : (
+                                <ArrowLeft className="h-8 w-8 group-hover:scale-110 transition-transform" />
+                            )}
                         </button>
 
                         {/* Next Button */}
                         <button
                             onClick={(e) => {
                                 e.stopPropagation();
-                                setSelectedImageIndex((prev) => {
-                                    if (prev === null) return 0;
-                                    if (prev === photos.length - 1) {
-                                        return hasMore ? prev : 0;
-                                    }
-                                    return prev + 1;
-                                });
+                                handleNext();
                             }}
                             className="absolute right-4 top-1/2 -translate-y-1/2 z-50 p-4 bg-black/20 hover:bg-black/40 backdrop-blur-md rounded-full text-white transition-all shadow-lg border border-white/20 group"
                             aria-label="Next photo"
                         >
-                            <ArrowLeft className="h-8 w-8 rotate-180 group-hover:scale-110 transition-transform" />
+                            {isLoadingMore && selectedImageIndex === photos.length - 1 ? (
+                                <Loader2 className="h-8 w-8 animate-spin" />
+                            ) : (
+                                <ArrowLeft className="h-8 w-8 rotate-180 group-hover:scale-110 transition-transform" />
+                            )}
                         </button>
 
                         {/* Image Display */}
@@ -332,7 +368,7 @@ export function TimelineGrid() {
                                     className="max-h-full max-w-full object-contain rounded-lg shadow-2xl"
                                 />
                                 <div className="absolute bottom-4 left-1/2 -translate-x-1/2 px-4 py-2 bg-black/50 backdrop-blur-md rounded-full text-white text-sm flex items-center gap-3">
-                                    <span>{selectedImageIndex + 1} / {photos.length}</span>
+                                    <span>{selectedImageIndex + 1} / {Math.max(photos.length, totalCount)}</span>
                                     {photos[selectedImageIndex].dateTaken && (
                                         <span className="text-white/70">
                                             {new Date(photos[selectedImageIndex].dateTaken!).toLocaleDateString()}

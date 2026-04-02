@@ -45,12 +45,8 @@ export async function GET(request: Request, context: Context) {
         }
     }
 
-    const { searchParams } = new URL(request.url);
-    const sortBy = searchParams.get('sortBy') || 'createdAt';
-    const sortDir = searchParams.get('sortDir') || 'desc';
-
     try {
-        const result = await AlbumService.getAlbum(userId, albumId, { sortBy, sortDir });
+        const result = await AlbumService.getAlbum(userId, albumId);
         if (!result) {
             return NextResponse.json({ error: "Not found" }, { status: 404 });
         }
@@ -58,13 +54,9 @@ export async function GET(request: Request, context: Context) {
             await logApiKeyUsage(apiKey.id, request, 200);
         }
         return NextResponse.json(result);
-    } catch (error: any) {
-        if (error.message === "Forbidden") {
-            // Check if user is unauthorized (401) or forbidden (403)
-            // Logic in service checks guest access too. 
-            // If userId is null and service throws Forbidden, it's 401/403 depending on if they are logged in?
-            // Usually if not logged in -> 401. If logged in but no access -> 403.
-            // Service handles userId | null.
+    } catch (error: unknown) {
+        const message = error instanceof Error ? error.message : "Unknown error";
+        if (message === "Forbidden") {
             if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
             return NextResponse.json({ error: "Forbidden" }, { status: 403 });
         }
